@@ -60,7 +60,7 @@ while (t := sim.getSimulationTime()) < 10:
         # new_position = generate_new_position.oval(i, -2, -2, 5, 3, pi / 4)
 
         # new method call
-        new_position = generate_new_position.oval_opening(i, -2, -2, 5, 3, pi / 4, 3 * pi / 8)
+        new_position = generate_new_position.oval_opening(i, -2, -2, 5, 3, 0, 3 * pi / 8)
 
         # line_endpoint_1 = np.array([2, 2])
         # line_endpoint_2 = np.array([-2, -2])
