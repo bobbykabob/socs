@@ -1,4 +1,3 @@
-
 import time
 
 from math import pi
@@ -18,7 +17,6 @@ robots = []
 robots_left_joint = []
 robots_right_joint = []
 prev_time = int(round(time.time() * 1000))
-
 
 
 def move_robot(index: int, left_power: float, right_power: float):
@@ -48,7 +46,7 @@ while (t := sim.getSimulationTime()) < 10:
         # move robot to a set speed
         left_speed = -10
         right_speed = 10
-        # move_robot(i, left_speed, right_speed)
+        # move_robot.py(i, left_speed, right_speed)
 
         # get robot positions & print
         # positions = sim.getObjectPosition(robots[i], sim.handle_world)
