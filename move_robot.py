@@ -4,6 +4,8 @@ from constants import ROBOT_C1, ROBOT_C2, ROBOT_TRACK_WIDTH
 from typing import List
 
 b = 1.5
+
+
 def move_robot(q_target: List[float], q_current: List[float]):
     """
 
@@ -48,8 +50,7 @@ def move_robot(q_target: List[float], q_current: List[float]):
     v_r = -c_1 * s_x * (psi_1 / ((psi_1 ** 2) + xi ** 2)) * d
     # rotational velocity
     # ω -> omega
-    omega_r = c_2 * xi * (c_1 / ((psi_1 ** 2) + xi ** 2)) * ((2/b) * psi_1 * psi_2 + xi * (d ** 2))
-
+    omega_r = c_2 * xi * (c_1 / ((psi_1 ** 2) + xi ** 2)) * ((2 / b) * psi_1 * psi_2 + xi * (d ** 2))
 
     # equation 2
 
