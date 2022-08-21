@@ -164,7 +164,7 @@ def oval_opening(index: int, h, k, a, b, A, B):
         else:
             ans = sol1
     else:
-        if ratio <= 0.5:
+        if ratio < 0.5:
             if sol1eq < 0:
                 ans = sol1
             else:

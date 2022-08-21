@@ -1,9 +1,7 @@
-from math import cos, sin, sqrt, atan
-from constants import ROBOT_C1, ROBOT_C2, ROBOT_TRACK_WIDTH
+from math import cos, sin, sqrt, atan2
+from constants import ROBOT_C1, ROBOT_C2, ROBOT_TRACK_WIDTH, b
 
 from typing import List
-
-b = 1.5
 
 
 def move_robot(q_target: List[float], q_current: List[float]):
@@ -12,15 +10,15 @@ def move_robot(q_target: List[float], q_current: List[float]):
     :param q_target: list of floats from arbitrary configuration [x'_r, y'_r, phi'_r],
     :param q_current: list of floats from current configuration [x_r, y_r, phi_r]
 
-    :return:
+    :return: v_left, v_right
     """
 
     # equation 4
-    x = q_current[0] * cos(q_target[2]) + q_current[1] * sin(q_target[2]) - q_target[0] * cos(q_target[2]) - q_target[
-        1] * sin(q_target[2])
+    x = q_current[0] * cos(q_target[2]) + q_current[1] * sin(q_target[2]) - \
+        q_target[0] * cos(q_target[2]) - q_target[1] * sin(q_target[2])
 
-    y = -q_current[0] * sin(q_target[2]) + q_current[1] * cos(q_target[2]) + q_target[0] * sin(q_target[2]) - q_target[
-        1] * cos(q_target[2])
+    y = -q_current[0] * sin(q_target[2]) + q_current[1] * cos(q_target[2]) + \
+        q_target[0] * sin(q_target[2]) - q_target[1] * cos(q_target[2])
 
     # Φ -> phi
     phi_r = q_current[2] - q_target[2]
@@ -32,7 +30,7 @@ def move_robot(q_target: List[float], q_current: List[float]):
 
     # η -> eta
     # -pi/ 2 <= eta <= pi/2
-    eta = s_x * atan(y / abs(x))
+    eta = s_x * atan2(y, abs(x))
 
     # ψ -> psi
     psi_1 = cos(eta - phi_r)
@@ -56,10 +54,11 @@ def move_robot(q_target: List[float], q_current: List[float]):
 
     B = ROBOT_TRACK_WIDTH
     # velocity of right wheel
-    v_right = v_r - (B * omega_r) / 2
+    v_right = v_r + (B * omega_r) / 2
 
     # velocity of left wheel
-    v_left = v_r + (B * omega_r) / 2
+    v_left = v_r - (B * omega_r) / 2
+
     return v_left, v_right
 
 

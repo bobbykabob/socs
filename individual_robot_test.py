@@ -22,7 +22,8 @@ name = '/robot'
 robots.append(sim.getObject(name))
 robots_left_joint.append(sim.getObject(name + '/leftjoint'))
 robots_right_joint.append(sim.getObject(name + '/rightjoint'))
-
+script_handle = sim.getScript(1, robots[i])
+sim.initScript(script_handle)
 # loops through simulation in seconds
 while (t := sim.getSimulationTime()) < 50:
     positions = sim.getObjectPosition(robots[0], sim.handle_world)
