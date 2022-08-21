@@ -15,8 +15,6 @@ sim.startSimulation()
 
 # empty arrays to cycle through
 robots = []
-robots_left_joint = []
-robots_right_joint = []
 script_handle = []
 prev_time = int(round(time.time() * 1000))
 
@@ -24,8 +22,7 @@ prev_time = int(round(time.time() * 1000))
 for i in range(0, NUM_OF_ROBOTS):
     name = '/robot[' + str(i) + ']'
     robots.append(sim.getObject(name))
-    robots_left_joint.append(sim.getObject(name + '/leftjoint'))
-    robots_right_joint.append(sim.getObject(name + '/rightjoint'))
+
     script_handle.append(sim.getScript(1, robots[i]))
 
     sim.initScript(script_handle[i])
