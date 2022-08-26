@@ -1,6 +1,6 @@
 # python
 # code on each individual robot
-from math import cos, sin, sqrt, atan2
+from math import cos, sin, sqrt, atan, pi
 from typing import List
 
 left_joint = None
@@ -42,7 +42,8 @@ def sysCall_actuation():
     c_2 = constants[1]
     B = constants[2]
     b = constants[3]
-    q_current = [positions[0], positions[1], orientation[2]]
+    angle = orientation[2]
+    q_current = [positions[0], positions[1], angle]
     x = q_current[0] * cos(q_target[2]) + q_current[1] * sin(q_target[2]) - \
         q_target[0] * cos(q_target[2]) - q_target[1] * sin(q_target[2])
 
@@ -52,14 +53,14 @@ def sysCall_actuation():
     # phi
     phi_r = q_current[2] - q_target[2]
 
-    # equation 3
+    # uation 3
     d = sqrt(x ** 2 + y ** 2)
 
     s_x = sign(x)
 
     # eta
     # -pi/ 2 <= eta <= pi/2
-    eta = s_x * atan2(y, abs(x))
+    eta = s_x * atan(y / abs(x))
 
     # psi
     psi_1 = cos(eta - phi_r)
@@ -67,22 +68,24 @@ def sysCall_actuation():
 
     # xi
     # 1 < b < 2
-    phi_a = (2 / b) * eta
+    phi_a = (2.0 / b) * eta
+
     xi = phi_a - phi_r
 
     # translational velocity V_R
-    v_r = -c_1 * s_x * (psi_1 / ((psi_1 ** 2) + xi ** 2)) * d
+    v_r = - c_1 * s_x * (psi_1 / ((psi_1 ** 2) + xi ** 2)) * d
     # rotational velocity
     # ? -> omega
-    omega_r = c_2 * xi * (c_1 / ((psi_1 ** 2) + xi ** 2)) * ((2 / b) * psi_1 * psi_2 + xi * (d ** 2))
-
-    # equation 2
+    omega_r = c_2 * xi + (c_1 / ((psi_1 ** 2) + xi ** 2)) * ((2.0 / b) * psi_1 * psi_2 + xi * (d ** 2))
 
     # velocity of right wheel
+    # positive omega -> turn left
+    # negative omega -> turn right
     v_right = v_r + (B * omega_r) / 2
 
     # velocity of left wheel
     v_left = v_r - (B * omega_r) / 2
+
     sim.setJointTargetVelocity(left_joint, v_left)
     sim.setJointTargetVelocity(right_joint, v_right)
     pass

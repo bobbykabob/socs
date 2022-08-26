@@ -28,7 +28,7 @@ for i in range(0, NUM_OF_ROBOTS):
     sim.initScript(script_handle[i])
 # looping through all robots
 for i in range(len(robots)):
-    new_position = generate_new_position.oval_opening(i, -2, -2, 5, 3, 0, 3 * pi / 8)
+    new_position = generate_new_position.oval_opening(i, -2, -2, 5, 3, 0, pi/8)
 
     sim.callScriptFunction("update_actuation", script_handle[i], [new_position[0], new_position[1], 0],
                            [ROBOT_C1, ROBOT_C2, ROBOT_TRACK_WIDTH, b])
