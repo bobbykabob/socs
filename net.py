@@ -14,7 +14,10 @@ class net:
         print(self.net_handle)
 
     def set_net_pos(self, pos):
-        self.sim.setObjectPosition(self.net_handle, self.sim.handle_world, [pos[0], pos[1], 0.25])
+        self.sim.setObjectPosition(self.net_handle, self.sim.handle_world, [pos[0], pos[1], 0.1])
 
     def set_net_orientation(self, beta):
-        self.sim.setObjectOrientation(self.net_handle, self.sim.handle_world, [-pi / 2, beta , -pi / 2])
+        self.sim.setObjectOrientation(self.net_handle, self.sim.handle_world, [-pi / 2, beta, -pi / 2])
+
+    def scale_net(self, y_scale, z_scale):
+        self.sim.scaleObject(self.net_handle, 1, y_scale, z_scale, 0)

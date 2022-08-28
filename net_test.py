@@ -17,7 +17,6 @@ sim.startSimulation()
 
 prev_time = int(round(time.time() * 1000))
 
-
 # loops through simulation in seconds
 
 nets = []
@@ -27,13 +26,13 @@ for n in range(num_of_nets):
     nets.append(a_net)
 
 for n in range(num_of_nets):
-    new_position = generate_new_position.oval(n, 0, 0, 4, 4, 0)
+    new_position = generate_new_position.oval(n, 0, 0, 2, 2, 0)
     nets[n].set_net_pos(new_position)
-    nets[n].set_net_orientation(0)
+    nets[n].set_net_orientation(pi - n * 2 * pi / num_of_nets)
 
 while (t := sim.getSimulationTime()) < 50:
-    for n in range(num_of_nets):
-        nets[n].set_net_orientation(t / pi)
+
+
     s = f'Simulation time: {t:.2f} [s]'
     current_time = int(round(time.time() * 1000))
     print('cycle time: ' + str(current_time - prev_time) + 'ms')
