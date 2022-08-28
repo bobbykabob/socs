@@ -5,7 +5,7 @@ import generate_new_position
 from constants import NUM_OF_ROBOTS
 from zmqRemoteApi import RemoteAPIClient
 from constants import ROBOT_C1, ROBOT_C2, ROBOT_TRACK_WIDTH, b
-
+import net
 # initial setup for client-sim
 client = RemoteAPIClient()
 sim = client.getObject('sim')
@@ -19,6 +19,7 @@ script_handle = []
 prev_time = int(round(time.time() * 1000))
 
 # connects robots to arrays
+
 for i in range(0, NUM_OF_ROBOTS):
     name = '/robot[' + str(i) + ']'
     robots.append(sim.getObject(name))

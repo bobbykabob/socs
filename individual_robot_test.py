@@ -28,7 +28,12 @@ for i in range(len(robots)):
 randx = randint(-10, 10)
 randy = randint(-10, 10)
 sim.setObjectPosition(robots[0], sim.handle_world, [randx, randy, 0.1])
-while (t := sim.getSimulationTime()) < 30:
+while (t := sim.getSimulationTime()) < 100:
+    if abs(sim.getSimulationTime()) % 10 <= 0.1:
+        randx = randint(-10, 10)
+        randy = randint(-10, 10)
+        sim.setObjectPosition(robots[0], sim.handle_world, [randx, randy, 0.1])
+
     s = f'Simulation time: {t:.2f} [s]'
     current_time = int(round(time.time() * 1000))
     print('cycle time: ' + str(current_time - prev_time) + 'ms')
