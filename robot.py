@@ -53,7 +53,7 @@ def sysCall_actuation():
     # phi
     phi_r = q_current[2] - q_target[2]
 
-    # uation 3
+    # equation 3
     d = sqrt(x ** 2 + y ** 2)
 
     s_x = sign(x)
