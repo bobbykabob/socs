@@ -1,15 +1,17 @@
 import time
-from scipy.interpolate import CubicSpline
-from zmqRemoteApi import RemoteAPIClient
-from net import net
-import generate_new_position
+from math import pi
+
 import matplotlib.pyplot as plt
 import numpy as np
-from math import pi
-from constants import NUM_OF_ROBOTS
-from shapely.geometry import LineString, Polygon
 from descartes import PolygonPatch
-from figures import SIZE, BLUE, GRAY, set_limits, plot_line
+from scipy.interpolate import CubicSpline
+from shapely.geometry import LineString
+
+import generate_new_position
+from constants import NUM_OF_ROBOTS
+from figures import BLUE
+from net import net
+from zmqRemoteApi import RemoteAPIClient
 
 # initial setup for client-sim
 client = RemoteAPIClient()
@@ -27,15 +29,14 @@ prev_time = int(round(time.time() * 1000))
 
 nets = []
 num_of_nets = NUM_OF_ROBOTS
-for n in range(num_of_nets):
-    a_net = net(sim)
-    nets.append(a_net)
+# net(sim)
 
 x_position = []
 y_position = []
 u = []
 for n in range(num_of_nets):
-    new_position = generate_new_position.oval_opening(n, 15, 10, 2, 5, pi / 4, 3 * pi / 8)
+    new_position = generate_new_position.oval_opening(n, 0, 0, 2, 2, -pi / 3, 1 * pi / 8)
+
     x_position.append(new_position[0])
     y_position.append(new_position[1])
     u.append(n)
@@ -62,15 +63,58 @@ for n in range(len(spline_x_position)):
 # shapely buffer code
 
 line = LineString(line)
-dilated = line.buffer(0.1, cap_style=3)
-patch1 = PolygonPatch(dilated, fc=BLUE, ec=BLUE, alpha=0.5, zorder=2)
+dilated = line.buffer(0.4, resolution=1, cap_style=3)
 
-# print verticies
+patch1 = PolygonPatch(dilated, fc=BLUE, ec=BLUE, alpha=0.1, zorder=2)
+
+# print vertices
 print("Polygon vertices")
-print(patch1.get_verts())
+patch_vertices_x, patch_vertices_y = dilated.exterior.coords.xy
 
+print(len(patch_vertices_x))
+print(patch_vertices_x)
+
+vertices_3d = []
+list_of_indices = []
+for n in range(len(patch_vertices_x) * 2):
+    current_index = n % len(patch_vertices_x)
+    z_position = 0.1
+    if n >= (len(patch_vertices_x) - 1):
+        z_position = 0.2
+    vertices_3d.append(patch_vertices_x[current_index])
+    vertices_3d.append(patch_vertices_y[current_index])
+    vertices_3d.append(z_position)
+    list_of_indices.append(n)
+print(vertices_3d)
+print(len(vertices_3d))
+print(list_of_indices)
+print(len(list_of_indices))
+net_object = sim.createMeshShape(2, 20.0 * 3.1415 / 180.0, vertices_3d, list_of_indices)
+vertices, indices = sim.importMesh(0, '/Users/harris/Desktop/CoppeliaSim/net.stl', 1, 0, 0.03)
+
+print(vertices)
+print(len(vertices[0]))
+old_vert_x = []
+old_vert_y = []
+modified_vertices = vertices[0]
+vert_x = []
+vert_y = []
+for n in range(int(len(vertices_3d))):
+    if (n % 3) == 0:
+        vert_x.append(vertices_3d[n])
+    elif (n % 3) == 1:
+        vert_y.append(vertices_3d[n])
+for n in range(int(len(modified_vertices)/2)):
+    if (n % 3) == 0:
+        old_vert_x.append(modified_vertices[n])
+    elif (n % 3) == 1:
+        old_vert_y.append(modified_vertices[n])
+net_handle = sim.createMeshShape(0, 20.0 * 3.1415 / 180.0, modified_vertices, indices[0])
+# ax.plot(old_vert_x, old_vert_y)
+ax.plot(vert_x, vert_y)
 # display in 2d
-ax.add_patch(patch1)
+# ax.add_patch(patch1)
+# ax.plot(patch_vertices_x, patch_vertices_y)
 ax.axes.set_aspect('equal')
 plt.show()
 

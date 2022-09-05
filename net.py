@@ -7,6 +7,8 @@ class net:
         self.vertices, self.indices = self.sim.importMesh(0, '/Users/harris/Desktop/CoppeliaSim/net.stl', 1, 0, 0.03)
         print(self.vertices)
         print(len(self.vertices[0]))
+        print(self.indices)
+        print(len(self.indices[0]))
         self.shading_angle = 20.0 * 3.1415 / 180.0
         print(type(self.shading_angle))
         for i in range(len(self.vertices)):
