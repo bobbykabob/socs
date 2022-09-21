@@ -22,10 +22,10 @@ prev_time = int(round(time.time() * 1000))
 
 for i in range(0, NUM_OF_ROBOTS):
     name = '/robot[' + str(i) + ']'
+
     robots.append(sim.getObject(name))
 
     script_handle.append(sim.getScript(1, robots[i]))
-
     sim.initScript(script_handle[i])
 # looping through all robots
 for i in range(len(robots)):

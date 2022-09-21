@@ -32,7 +32,6 @@ sim.setObjectOrientation(robots[0], sim.handle_world, [0, 0, pi/2])
 
 while (t := sim.getSimulationTime()) < 20:
 
-
     s = f'Simulation time: {t:.2f} [s]'
     current_time = int(round(time.time() * 1000))
     print('cycle time: ' + str(current_time - prev_time) + 'ms')

@@ -1,19 +1,22 @@
-import time
-from math import pi
+
 
 import numpy
 import numpy as np
-import open3d.cpu.pybind.geometry
+
 from scipy.interpolate import CubicSpline
 from shapely.geometry import LineString
 import open3d as o3d
 
 import generate_new_position
 from constants import NUM_OF_ROBOTS
-from figures import BLUE
-from net import net
-from zmqRemoteApi import RemoteAPIClient
 
+import time
+from math import pi
+
+
+from zmqRemoteApi import RemoteAPIClient
+from constants import ROBOT_C1, ROBOT_C2, ROBOT_TRACK_WIDTH, b
+from math import radians
 # initial setup for client-sim
 client = RemoteAPIClient()
 sim = client.getObject('sim')
@@ -22,9 +25,26 @@ client.setStepping(True)
 sim.startSimulation()
 
 # empty arrays to cycle through
+robots = []
+script_handle = []
+robot_positions = []
 
 
-prev_time = int(round(time.time() * 1000))
+for i in range(0, NUM_OF_ROBOTS):
+    name = '/robot[' + str(i) + ']'
+
+    robots.append(sim.getObject(name))
+
+    script_handle.append(sim.getScript(1, robots[i]))
+    sim.initScript(script_handle[i])
+
+
+# looping through all robots
+for i in range(len(robots)):
+    new_position = generate_new_position.oval_opening(i, 0, 0, 2, 2, 0, pi/8)
+    robot_positions.append(new_position)
+    sim.callScriptFunction("update_actuation", script_handle[i], [new_position[0], new_position[1], 0],
+                           [ROBOT_C1, ROBOT_C2, ROBOT_TRACK_WIDTH, b])
 
 # loops through simulation in seconds
 
@@ -35,12 +55,12 @@ num_of_nets = NUM_OF_ROBOTS
 x_position = []
 y_position = []
 u = []
-for n in range(num_of_nets):
-    new_position = generate_new_position.oval_opening(n, 0, 0, 0.3, 0.3, -pi / 3, 1 * pi / 8)
+for i in range(num_of_nets):
+    new_position = generate_new_position.oval_opening(i, 0, 0, 2, 2, 0, pi/8)
 
     x_position.append(new_position[0])
     y_position.append(new_position[1])
-    u.append(n)
+    u.append(i)
 
 xy_position = np.c_[x_position, y_position]
 
@@ -48,7 +68,7 @@ print("xy_position" + str(xy_position))
 print("u" + str(u))
 spline = CubicSpline(u, xy_position, extrapolate=False)
 
-xs = (num_of_nets + 1) * np.linspace(0, 1, 5000)
+xs = (num_of_nets + 1) * np.linspace(0, 1, 300)
 spline_x_position = spline(xs)[:, 0]
 spline_y_position = spline(xs)[:, 1]
 
@@ -130,20 +150,39 @@ for i in range(len(vertices)):
     net_handle = sim.createMeshShape(0, shading_angle, vertices[i], indices[i])
     # net_handle_2 = sim.createMeshShape(0, shading_angle, vertices[i], indices[i])
 sim.setObjectPosition(net_handle, sim.handle_world, [0, 0, 0.05])
-# sim.setObjectPosition(net_handle_2, sim.handle_world, [0, 0, 0.08])
 
 # we need to set the object to be respondable to other objects (like the sphere)
 sim.setObjectInt32Param(net_handle, 3004, 1)
+sim.setObjectInt32Param(net_handle, 3024, 1)
 
-# sim.setObjectInt32Param(net_handle_2,3004,1)
+sim.setObjectInt32Param(net_handle, 3019, 61455)
+sim.resetDynamicObject(net_handle)
+# sim.setObjectInt32Param(net_handle_2,3004
 
-while (t := sim.getSimulationTime()) < 500:
+prev_time = int(round(time.time() * 1000))
+
+while (t := sim.getSimulationTime()) < 25:
+
     s = f'Simulation time: {t:.2f} [s]'
     current_time = int(round(time.time() * 1000))
     print('cycle time: ' + str(current_time - prev_time) + 'ms')
     prev_time = current_time
     print(s)
     client.step()
+for i in range(len(robots)):
+    a_robot_position = robot_positions[i]
+    a_robot_position[0] += 2
+    sim.callScriptFunction("update_actuation", script_handle[i], [a_robot_position[0], a_robot_position[1], 0],
+                           [ROBOT_C1, ROBOT_C2, ROBOT_TRACK_WIDTH, b])
+
+while (t := sim.getSimulationTime()) < 100:
+    s = f'Simulation time: {t:.2f} [s]'
+    current_time = int(round(time.time() * 1000))
+    print('cycle time: ' + str(current_time - prev_time) + 'ms')
+    prev_time = current_time
+    print(s)
+    client.step()
+
 
 # end simulation
 sim.stopSimulation()
