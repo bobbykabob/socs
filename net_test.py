@@ -38,16 +38,6 @@ for i in range(0, NUM_OF_ROBOTS):
     script_handle.append(sim.getScript(1, robots[i]))
     sim.initScript(script_handle[i])
 
-
-# looping through all robots
-for i in range(len(robots)):
-    new_position = generate_new_position.oval_opening(i, 0, 0, 2, 2, 0, pi/8)
-    robot_positions.append(new_position)
-    sim.callScriptFunction("update_actuation", script_handle[i], [new_position[0], new_position[1], 0],
-                           [ROBOT_C1, ROBOT_C2, ROBOT_TRACK_WIDTH, b])
-
-# loops through simulation in seconds
-
 nets = []
 num_of_nets = NUM_OF_ROBOTS
 # net(sim)
@@ -55,12 +45,21 @@ num_of_nets = NUM_OF_ROBOTS
 x_position = []
 y_position = []
 u = []
-for i in range(num_of_nets):
-    new_position = generate_new_position.oval_opening(i, 0, 0, 2, 2, 0, pi/8)
 
+# looping through all robots
+for i in range(len(robots)):
+    new_position = generate_new_position.oval_opening(i, 0, 0, 2, 4, 0, pi/8)
+    robot_positions.append(new_position)
+    sim.callScriptFunction("update_actuation", script_handle[i], [new_position[0], new_position[1], 0],
+                           [ROBOT_C1, ROBOT_C2, ROBOT_TRACK_WIDTH, b])
     x_position.append(new_position[0])
     y_position.append(new_position[1])
     u.append(i)
+# loops through simulation in seconds
+
+
+
+
 
 xy_position = np.c_[x_position, y_position]
 
@@ -174,7 +173,7 @@ for i in range(len(robots)):
     sim.callScriptFunction("update_actuation", script_handle[i], [a_robot_position[0], a_robot_position[1], 0],
                            [ROBOT_C1, ROBOT_C2, ROBOT_TRACK_WIDTH, b])
 
-while (t := sim.getSimulationTime()) < 100:
+while (t := sim.getSimulationTime()) < 50:
     x_average = 0
     y_average = 0
     for i in range(len(robots)):
