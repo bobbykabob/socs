@@ -68,7 +68,7 @@ print("xy_position" + str(xy_position))
 print("u" + str(u))
 spline = CubicSpline(u, xy_position, extrapolate=False)
 
-xs = (num_of_nets + 1) * np.linspace(0, 1, 300)
+xs = (num_of_nets + 1) * np.linspace(0, 1, 500)
 spline_x_position = spline(xs)[:, 0]
 spline_y_position = spline(xs)[:, 1]
 
@@ -95,12 +95,12 @@ for n in range(int(len(patch_vertices_x))):
 
     # bottom dimension of net
     z_pos = 0.004
-    row = [x_pos, y_pos, z_pos, 8, 8, 8]
+    row = [x_pos, y_pos, z_pos]
     vertices_3d.append(row)
 
     # top dimension of net
-    z_pos = 0.008
-    row = [x_pos, y_pos, z_pos, 8, 8, 8]
+    z_pos = 0.01
+    row = [x_pos, y_pos, z_pos]
     vertices_3d.append(row)
 
 # input point cloud into Open3D file types
@@ -108,9 +108,8 @@ vertices_3d = numpy.array(vertices_3d)
 print(vertices_3d)
 pcd = o3d.geometry.PointCloud()
 
-# now we include details about the Point Cloud: we need the xyz position, color, normal vectors of each point
+# now we include details about the Point Cloud: we need the xyz position
 pcd.points = o3d.utility.Vector3dVector(vertices_3d[:, :3])
-pcd.colors = o3d.utility.Vector3dVector(vertices_3d[:, 3:6] / 255)
 
 # we utilize open3d's estimate normal method to estimate each individual point's normal plane
 o3d.geometry.PointCloud.estimate_normals(
@@ -176,6 +175,16 @@ for i in range(len(robots)):
                            [ROBOT_C1, ROBOT_C2, ROBOT_TRACK_WIDTH, b])
 
 while (t := sim.getSimulationTime()) < 100:
+    x_average = 0
+    y_average = 0
+    for i in range(len(robots)):
+        positions = sim.getObjectPosition(robots[i], sim.handle_world)
+        x_average += positions[0]
+        y_average += positions[1]
+    x_average = x_average / len(robots)
+    y_average = y_average / len(robots)
+
+    sim.setObjectPosition(net_handle, sim.handle_world, [x_average, y_average, 0.05])
     s = f'Simulation time: {t:.2f} [s]'
     current_time = int(round(time.time() * 1000))
     print('cycle time: ' + str(current_time - prev_time) + 'ms')
