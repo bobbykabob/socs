@@ -1,22 +1,18 @@
-
-
+import time
+from math import pi
 import numpy
 import numpy as np
-
+import open3d as o3d
 from scipy.interpolate import CubicSpline
 from shapely.geometry import LineString
-import open3d as o3d
 
 import generate_new_position
 from constants import NUM_OF_ROBOTS
-
-import time
-from math import pi
-
-
-from zmqRemoteApi import RemoteAPIClient
 from constants import ROBOT_C1, ROBOT_C2, ROBOT_TRACK_WIDTH, b
-from math import radians
+from zmqRemoteApi import RemoteAPIClient
+
+from itertools import permutations
+
 # initial setup for client-sim
 client = RemoteAPIClient()
 sim = client.getObject('sim')
@@ -28,7 +24,7 @@ sim.startSimulation()
 robots = []
 script_handle = []
 robot_positions = []
-
+starting_robot_positions = []
 
 for i in range(0, NUM_OF_ROBOTS):
     name = '/robot[' + str(i) + ']'
@@ -38,7 +34,6 @@ for i in range(0, NUM_OF_ROBOTS):
     script_handle.append(sim.getScript(1, robots[i]))
     sim.initScript(script_handle[i])
 
-nets = []
 num_of_nets = NUM_OF_ROBOTS
 # net(sim)
 
@@ -48,17 +43,30 @@ u = []
 
 # looping through all robots
 for i in range(len(robots)):
-    new_position = generate_new_position.oval_opening(i, 0, 0, 2, 4, 0, pi/8)
+    new_position = generate_new_position.oval_opening(i, 0, 0, 2, 4, 0, pi * 1 / 8)
     robot_positions.append(new_position)
-    sim.callScriptFunction("update_actuation", script_handle[i], [new_position[0], new_position[1], 0],
-                           [ROBOT_C1, ROBOT_C2, ROBOT_TRACK_WIDTH, b])
+    starting_robot_positions.append(sim.getObjectPosition(robots[i], sim.handle_world))
     x_position.append(new_position[0])
     y_position.append(new_position[1])
     u.append(i)
+starting_robot_positions = np.array(starting_robot_positions)
+starting_robot_positions = starting_robot_positions[:, [0, 1]]
+print("starting robot positions")
+print(starting_robot_positions)
+smallest = np.linalg.norm([x_position[0], y_position[0]] - starting_robot_positions[0,:])
+for i in range(num_of_nets):
+
+    for j in range(num_of_nets):
+        a_distance = np.linalg.norm([x_position[j], y_position[j]] - starting_robot_positions[i,:])
+        if a_distance <= smallest:
+            smallest = a_distance
+
+print("smallest " + str(smallest))
+for i in range(len(robots)):
+    sim.callScriptFunction("update_actuation", script_handle[i], [x_position[i], y_position[i], 0],
+                           [ROBOT_C1, ROBOT_C2, ROBOT_TRACK_WIDTH, b])
+
 # loops through simulation in seconds
-
-
-
 
 
 xy_position = np.c_[x_position, y_position]
@@ -160,7 +168,6 @@ sim.resetDynamicObject(net_handle)
 prev_time = int(round(time.time() * 1000))
 
 while (t := sim.getSimulationTime()) < 25:
-
     s = f'Simulation time: {t:.2f} [s]'
     current_time = int(round(time.time() * 1000))
     print('cycle time: ' + str(current_time - prev_time) + 'ms')
@@ -190,7 +197,6 @@ while (t := sim.getSimulationTime()) < 50:
     prev_time = current_time
     print(s)
     client.step()
-
 
 # end simulation
 sim.stopSimulation()
