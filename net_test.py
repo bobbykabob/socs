@@ -5,7 +5,7 @@ import numpy as np
 import open3d as o3d
 from scipy.interpolate import CubicSpline
 from shapely.geometry import LineString
-
+from scipy.optimize import linear_sum_assignment
 import generate_new_position
 from constants import NUM_OF_ROBOTS
 from constants import ROBOT_C1, ROBOT_C2, ROBOT_TRACK_WIDTH, b
@@ -53,17 +53,24 @@ starting_robot_positions = np.array(starting_robot_positions)
 starting_robot_positions = starting_robot_positions[:, [0, 1]]
 print("starting robot positions")
 print(starting_robot_positions)
-smallest = np.linalg.norm([x_position[0], y_position[0]] - starting_robot_positions[0,:])
-for i in range(num_of_nets):
-
-    for j in range(num_of_nets):
-        a_distance = np.linalg.norm([x_position[j], y_position[j]] - starting_robot_positions[i,:])
-        if a_distance <= smallest:
-            smallest = a_distance
-
-print("smallest " + str(smallest))
+distance_matrix = np.empty([len(robots), len(robots)])
 for i in range(len(robots)):
-    sim.callScriptFunction("update_actuation", script_handle[i], [x_position[i], y_position[i], 0],
+    # i refers to machine / robot
+    for j in range(len(robots)):
+        # j refers to target position
+        distance_matrix[i][j] = numpy.linalg.norm(starting_robot_positions[i] - robot_positions[j])
+print(distance_matrix)
+
+# perform assignment
+row_ind, col_ind = linear_sum_assignment(distance_matrix)
+# row = i = machine / robot indexes
+print(row_ind)
+# column = j = target position
+print(col_ind)
+
+for i in row_ind:
+    j = col_ind[i]
+    sim.callScriptFunction("update_actuation", script_handle[i], [x_position[j], y_position[j], 0],
                            [ROBOT_C1, ROBOT_C2, ROBOT_TRACK_WIDTH, b])
 
 # loops through simulation in seconds
@@ -174,8 +181,8 @@ while (t := sim.getSimulationTime()) < 25:
     prev_time = current_time
     print(s)
     client.step()
-for i in range(len(robots)):
-    a_robot_position = robot_positions[i]
+for i in row_ind:
+    a_robot_position = robot_positions[col_ind[i]]
     a_robot_position[0] += 2
     sim.callScriptFunction("update_actuation", script_handle[i], [a_robot_position[0], a_robot_position[1], 0],
                            [ROBOT_C1, ROBOT_C2, ROBOT_TRACK_WIDTH, b])
