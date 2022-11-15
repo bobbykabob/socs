@@ -58,51 +58,49 @@ plt.xlabel("X-axis")
 plt.ylabel("Y-axis")
 
 while (t := sim.getSimulationTime()) < 40:
+    # create an empty area to store the image matrices
     full_img = []
 
     for i in range(len(vision_sensors)):
+        # handles the Vision Sensor to update (clearing previous image)
         sim.handleVisionSensor(vision_sensors[i])
-        img, resX, resY = sim.getVisionSensorCharImage(vision_sensors[i])
-        img = sim.getVisionSensorDepth(vision_sensors[i], sim.handleflag_depthbuffer, [0, 0], [0, 0])
-        res = img[1]
-        img = img[0]
-        lower_bound = (110) * 4 * 256
-        upper_bound = (111) * 4 * 256
 
-        img = img[lower_bound:upper_bound]
+        # gets Vision sensor depth informaton
+        img = sim.getVisionSensorDepth(vision_sensors[i], sim.handleflag_depthbuffer, [0, 0], [0, 0])
+
+        # we select the image matrix of the returned value (img[0] is the matrix, img[1] is the resolution matrix)
+        img = img[0]
+
+        # we convert the int32 into int8 format
         img = sim.unpackFloatTable(img, 0, 65536, 0)
-        resX = res[0]
-        resY = res[1]
-        print(len(img))
-        #img = numpy.frombuffer(img, dtype=numpy.uint8).reshape(resY, resX, 4)
-        #img = img[:,:,3]
-        img = numpy.array(img).reshape(1, resY, 1)
-        # In CoppeliaSim images are left to right (x-axis), and bottom to top (y-axis)
-        # (consistent with the axes of vision sensors, pointing Z outwards, Y up)
-        # and color format is RGB triplets, whereas OpenCV uses BGR:
+
+        # reshape into numpy & opencv format
+        img = numpy.array(img).reshape(1, 256, 1)
+
+        # flip the camera
         img = cv2.flip(img, 0)
+        # append onto the circular image
         full_img.append(img)
 
+    # concatenate into one matrix; previously it was an array of matirices
     circular_img = numpy.concatenate((full_img[2],full_img[3],full_img[1],full_img[0]),axis=1)
     full_img = circular_img
-    for i in range(50):
-        full_img = numpy.concatenate((full_img, circular_img),axis=0)
-    # full_img = cv2.bitwise_not(full_img)
-    #lined_img = circular_img[130:160,:]
 
+    # show the result
     cv2.imshow('depth view', full_img)
-    #cv2.imshow('lined', lined_img)
-    # creating new Y values
-    theta = numpy.linspace( 0 , 2 * numpy.pi , 150 )
+
+    # perform calculations with the acquired data; we create a polar graph from the data
+    # x represents the theta value
     x = []
+    # y represents the radius value
     y = []
     max_distance = 1
     offset = -3*numpy.pi/4
-    for i in range(256 * 4):
-        distance = circular_img[0,i]
 
-
-        x.append(offset + 2 * numpy.pi * (256 * 4 - i) / (256 * 4))
+    data_points = 4 * 256
+    for i in range(128):
+        distance = circular_img[0, i*8]
+        x.append(offset + 2 * numpy.pi * (data_points - i*8) / data_points)
         y.append(distance)
 
     # updating data values
@@ -115,9 +113,9 @@ while (t := sim.getSimulationTime()) < 40:
     # loop until all UI events
     # currently waiting have been processed
     figure.canvas.flush_events()
-    cv2.waitKey(1)
 
-    s = f'Simulation time: {t:.2f} [s]'
+    # process the user information - cycle time & simulation times
+    s = f'Simulation time: {t:.3f} [s]'
     current_time = int(round(time.time() * 1000))
     print('cycle time: ' + str(current_time - prev_time) + 'ms')
     prev_time = current_time
