@@ -5,9 +5,10 @@ import matplotlib.pyplot as plt
 
 
 class full_robot:
-    vision_sensors = []
+
 
     def __init__(self, sim, name):
+        self.vision_sensors = []
         self.name = name
         self.y = None
         self.x = None
@@ -80,4 +81,8 @@ class full_robot:
     def move_robot(self, target_pos, constants):
         self.sim.callScriptFunction("update_actuation", self.script_handle, target_pos, constants)
     def show_depth_view(self):
-        cv2.imshow('depth view: ' + self.name, self.full_img)
+        circular_img = self.full_img
+        full_img = self.full_img
+        for i in range(50):
+            full_img = numpy.concatenate((full_img, circular_img), axis=0)
+        cv2.imshow('depth view: ' + self.name, full_img)
