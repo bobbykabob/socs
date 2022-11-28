@@ -62,7 +62,7 @@ class full_robot:
 
         self.x = []
         self.y = []
-        self.figure, self.ax = plt.subplots(figsize=(2.5, 2.5), subplot_kw={'projection': 'polar'})
+        self.figure, self.ax = plt.subplots(figsize=(2.5, 4), subplot_kw={'projection': 'polar'})
         self.line1, = self.ax.plot(self.x, self.y, 'bo')
         r = numpy.arange(0, 2, 0.01)
         theta = numpy.pi / 2 + r * 0
@@ -77,6 +77,7 @@ class full_robot:
         plt.ylabel("Y-axis")
 
     def update_local_graph(self):
+        self.rotate_coordinates()
         self.line1.set_xdata(self.x)
         self.line1.set_ydata(self.y)
         self.figure.canvas.draw()
@@ -91,6 +92,13 @@ class full_robot:
         for i in range(50):
             full_img = numpy.concatenate((full_img, circular_img), axis=0)
         cv2.imshow('depth view: ' + self.name, full_img)
+
+    def rotate_coordinates(self):
+        current_angles = self.sim.getObjectOrientation(self.handle, self.sim.handle_world)
+        for i in range(len(self.x)):
+
+            self.x[i] = self.x[i] + math.pi/2 + current_angles[2]
+
     def get_global_coordinates(self):
         global_x = []
         global_y = []
@@ -101,6 +109,8 @@ class full_robot:
         # we utilize the x = rcostheta & y = rsintheta to convert into local rectangular coordinates
         # we then call the position of our own robot, to convert into global rectangular coordinates
         current_pos = self.sim.getObjectPosition(self.handle, self.sim.handle_world)
+
+
         robot_x = current_pos[0]
         robot_y = current_pos[1]
         for i in range(len(self.x)):

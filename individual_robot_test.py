@@ -25,29 +25,38 @@ prev_time = int(round(time.time() * 1000))
 
 a_robot = full_robot(sim, '/robot[0]')
 b_robot = full_robot(sim, '/robot[1]')
+c_robot = full_robot(sim, '/robot[2]')
 for i in range(1):
     target_angle = radians(0)
-    target_pos = [-10, 10, target_angle]
+    target_pos = [-5, 5, target_angle]
     constants = [ROBOT_C1, ROBOT_C2, ROBOT_TRACK_WIDTH, b]
     a_robot.move_robot(target_pos, constants)
-
+    b_robot.move_robot(target_pos, constants)
+    c_robot.move_robot(target_pos, constants)
 a_robot.init_local_graph()
 b_robot.init_local_graph()
+c_robot.init_local_graph()
 while (t := sim.getSimulationTime()) < 40:
     x = []
     y = []
     a_robot.generate_full_img()
-    # a_robot.show_depth_view()
     a_robot.calculate_polar_coordinates()
     a_robot.update_local_graph()
+
     b_robot.generate_full_img()
-    # b_robot.show_depth_view()
     b_robot.calculate_polar_coordinates()
     b_robot.update_local_graph()
+
+    c_robot.generate_full_img()
+    c_robot.calculate_polar_coordinates()
+    c_robot.update_local_graph()
+
     a_x, a_y = a_robot.get_global_coordinates()
     b_x, b_y = b_robot.get_global_coordinates()
-    x = numpy.concatenate([a_x, b_x])
-    y = numpy.concatenate([a_y, b_y])
+    c_x, c_y = c_robot.get_global_coordinates()
+    x = numpy.concatenate([a_x, b_x, c_x])
+    y = numpy.concatenate([a_y, b_y, c_y])
+
     line1.set_xdata(x)
     line1.set_ydata(y)
     figure.canvas.draw()
@@ -55,7 +64,7 @@ while (t := sim.getSimulationTime()) < 40:
     figure.canvas.flush_events()
     # perform calculations with the acquired data; we create a polar graph from the data
     # x represents the theta value
-    print(x)
+
 
     # process the user information - cycle time & simulation times
     s = f'Simulation time: {t:.3f} [s]'
