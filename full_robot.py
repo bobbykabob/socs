@@ -1,4 +1,5 @@
-import matplotlib.pyplot as plt
+import math
+
 import numpy
 import cv2
 import matplotlib.pyplot as plt
@@ -50,6 +51,8 @@ class full_robot:
 
         for i in range(128):
             distance = self.full_img[0, i * 8]
+            # currently, 0 ranges from 0 - 1, but we need to scale into meters
+            distance *= 2
             self.x.append(offset + 2 * numpy.pi * (data_points - i * 8) / data_points)
             self.y.append(distance)
 
@@ -59,13 +62,15 @@ class full_robot:
 
         self.x = []
         self.y = []
-        self.figure, self.ax = plt.subplots(figsize=(10, 10), subplot_kw={'projection': 'polar'})
+        self.figure, self.ax = plt.subplots(figsize=(2.5, 2.5), subplot_kw={'projection': 'polar'})
         self.line1, = self.ax.plot(self.x, self.y, 'bo')
         r = numpy.arange(0, 2, 0.01)
         theta = numpy.pi / 2 + r * 0
         self.ax.plot(theta, r, color="green")
         # setting title
-        plt.title("radial view: " + self.name, fontsize=20)
+        title = "radial view: " + self.name
+        plt.title(title)
+        self.figure.canvas.set_window_title(title)
 
         # setting x-axis label and y-axis label
         plt.xlabel("X-axis")
@@ -86,3 +91,21 @@ class full_robot:
         for i in range(50):
             full_img = numpy.concatenate((full_img, circular_img), axis=0)
         cv2.imshow('depth view: ' + self.name, full_img)
+    def get_global_coordinates(self):
+        global_x = []
+        global_y = []
+
+        # self.x = theta
+        # self.y = r
+
+        # we utilize the x = rcostheta & y = rsintheta to convert into local rectangular coordinates
+        # we then call the position of our own robot, to convert into global rectangular coordinates
+        current_pos = self.sim.getObjectPosition(self.handle, self.sim.handle_world)
+        robot_x = current_pos[0]
+        robot_y = current_pos[1]
+        for i in range(len(self.x)):
+            local_x = self.y[i] * math.cos(self.x[i])
+            local_y = self.y[i] * math.sin(self.x[i])
+            global_x.append(robot_x + local_x)
+            global_y.append(robot_y + local_y)
+        return global_x, global_y
