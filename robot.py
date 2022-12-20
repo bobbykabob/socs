@@ -2,6 +2,11 @@
 # code on each individual robot
 from math import cos, sin, sqrt, atan, pi
 from typing import List
+import numpy
+import cv2
+import matplotlib
+import matplotlib.style as mplstyle
+import matplotlib.pyplot as plt
 
 left_joint = None
 right_joint = None
@@ -11,6 +16,13 @@ constants = []
 orientation = []
 positions = []
 has_run = False
+vision_sensors = []
+circle_x = []
+circle_y = []
+p1 = None
+figure = None
+background = None
+ax = None
 
 
 def update_actuation(l_q_target: List[float], l_constants: List[float]):
@@ -24,11 +36,15 @@ def update_actuation(l_q_target: List[float], l_constants: List[float]):
 
 def sysCall_init():
     # initiate robot
-    global left_joint, right_joint, robot
+    global left_joint, right_joint, robot, vision_sensors
     robot = sim.getObject('.')
     left_joint = sim.getObject('./leftjoint')
     right_joint = sim.getObject('./rightjoint')
-    pass
+    vision_sensors.append(sim.getObject('./Cylinder/Vision_sensor[0]'))
+    vision_sensors.append(sim.getObject('./Cylinder/Vision_sensor[1]'))
+    vision_sensors.append(sim.getObject('./Cylinder/Vision_sensor[2]'))
+    vision_sensors.append(sim.getObject('./Cylinder/Vision_sensor[3]'))
+    init_local_graph()
 
 
 def sysCall_actuation():
@@ -93,10 +109,25 @@ def sysCall_actuation():
 
 def sysCall_sensing():
     # update robot positions
-    global positions, orientation
+    global positions, orientation, vision_sensors
     positions = sim.getObjectPosition(robot, sim.handle_world)
     orientation = sim.getObjectOrientation(robot, sim.handle_world)
+    full_img = []
 
+    for i in range(len(vision_sensors)):
+        sim.handleVisionSensor(vision_sensors[i])
+        img = sim.getVisionSensorDepth(vision_sensors[i], sim.handleflag_depthbuffer, [0, 0], [0, 0])
+        img = img[0]
+        img = sim.unpackFloatTable(img, 0, 65536, 0)
+        img = numpy.array(img).reshape(1, 256, 1)
+
+        img = cv2.flip(img, 0)
+        full_img.append(img)
+
+    circular_img = numpy.concatenate((full_img[2], full_img[3], full_img[1], full_img[0]), axis=1)
+    full_img = circular_img
+    calculate_polar_coordinates(full_img)
+    update_local_graph()
     pass
 
 
@@ -119,3 +150,88 @@ def sign(x):
         return -1
     else:
         return 0
+
+
+def calculate_polar_coordinates(full_img):
+    global circle_x, circle_y
+    circle_x = []
+    circle_y = []
+    offset = -3 * numpy.pi / 4
+    data_points = 4 * 256
+
+    for i in range(128):
+        distance = full_img[0, i * 8]
+        # currently, 0 ranges from 0 - 1, but we need to scale into meters
+        distance *= 2
+        circle_x.append(offset + 2 * numpy.pi * (data_points - i * 8) / data_points)
+        circle_y.append(distance)
+
+    return circle_x, circle_y
+
+
+def get_polar_coordinates():
+    global circle_x, circle_y
+    return circle_x, circle_y
+
+
+def init_local_graph():
+    global circle_x, circle_y, p1, figure, background, ax
+    circle_x = []
+    circle_y = []
+    figure, ax = plt.subplots(figsize=(2.5, 4), subplot_kw={'projection': 'polar'})
+
+    r = numpy.arange(0, 2, 0.01)
+    theta = numpy.pi / 2 + r * 0
+    ax.plot(theta, r, color="green")
+    # setting title
+    title = "radial view: "
+    plt.title(title)
+    figure.canvas.set_window_title(title)
+
+    # setting x-axis label and y-axis label
+    plt.xlabel("X-axis")
+    plt.ylabel("Y-axis")
+    plt.show(block=False)
+    mplstyle.use('fast')
+    p1, = ax.plot(circle_x, circle_y, 'bo')
+    figure.canvas.draw()
+    background = figure.canvas.copy_from_bbox(ax.bbox)
+
+
+def rotate_coordinates():
+    global orientation, circle_x, circle_y
+    for i in range(len(circle_x)):
+        circle_x[i] = circle_x[i] + math.pi / 2 + orientation[2]
+
+
+def update_local_graph():
+    global circle_x, circle_y, p1, figure, background, ax
+    rotate_coordinates()
+    new_x = []
+    new_y = []
+    for i in range(int(len(circle_x))):
+        new_x.append(circle_x[i])
+        new_y.append(circle_y[i])
+    p1.set_xdata(new_x)
+    p1.set_ydata(new_y)
+    figure.canvas.restore_region(background)
+    # figure.canvas.blit(ax.bbox)
+
+    ax.draw_artist(p1)
+
+    figure.canvas.update()
+
+    figure.canvas.flush_events()
+
+    # p1.update(circle_x, circle_y, pen=None, symbol='o')
+
+
+def show_depth_view():
+    global full_img
+    circular_img = full_img
+
+    for i in range(50):
+        full_img = numpy.concatenate((full_img, circular_img), axis=0)
+    cv2.imshow('depth view', full_img)
+
+

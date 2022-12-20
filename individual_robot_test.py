@@ -1,7 +1,7 @@
 import time
 from math import radians
 
-import cv2
+import matplotlib.style as mplstyle
 import matplotlib.pyplot as plt
 import numpy
 
@@ -19,39 +19,45 @@ x = [-20, 0, 0, -20]
 y = [0, 0, 20, 20]
 figure, ax = plt.subplots(figsize=(5.0, 5.0))
 line1, = ax.plot(x, y, 'bo')
-
+plt.show(block=False)
+mplstyle.use('fast')
+figure.canvas.draw()
+background = figure.canvas.copy_from_bbox(ax.bbox)
 # empty arrays to cycle through
 prev_time = int(round(time.time() * 1000))
 
-a_robot = full_robot(sim, '/robot')
-for i in range(1):
-    target_angle = radians(0)
-    target_pos = [-5, 5, target_angle]
-    constants = [ROBOT_C1, ROBOT_C2, ROBOT_TRACK_WIDTH, b]
-    a_robot.move_robot(target_pos, constants)
+robots = []
+target_angle = radians(0)
+target_pos = [-10, 10, target_angle]
+constants = [ROBOT_C1, ROBOT_C2, ROBOT_TRACK_WIDTH, b]
+for i in range(2):
 
-a_robot.init_local_graph()
+    robots.append(full_robot(sim, '/robot[' + str(i) + ']'))
+    robots[i].move_robot(target_pos, constants)
 
 while (t := sim.getSimulationTime()) < 40:
     x = []
     y = []
-    a_robot.generate_full_img()
-    a_robot.calculate_polar_coordinates()
-    a_robot.update_local_graph()
+    for i in range(2):
+        a_x = []
+        a_y = []
+        a_x, a_y = robots[i].get_global_coordinates()
 
-    a_x, a_y = a_robot.get_global_coordinates()
-
-    x = numpy.concatenate([a_x])
-    y = numpy.concatenate([a_y])
+        x = numpy.concatenate([x, a_x])
+        y = numpy.concatenate([y, a_y])
 
     line1.set_xdata(x)
     line1.set_ydata(y)
-    figure.canvas.draw()
-    plt.pause(0.0000000001)
+    figure.canvas.restore_region(background)
+    # figure.canvas.blit(ax.bbox)
+
+    ax.draw_artist(line1)
+
+    figure.canvas.update()
+
     figure.canvas.flush_events()
     # perform calculations with the acquired data; we create a polar graph from the data
     # x represents the theta value
-
 
     # process the user information - cycle time & simulation times
     s = f'Simulation time: {t:.3f} [s]'

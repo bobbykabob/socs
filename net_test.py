@@ -9,8 +9,10 @@ from scipy.optimize import linear_sum_assignment
 import generate_new_position
 from constants import NUM_OF_ROBOTS
 from constants import ROBOT_C1, ROBOT_C2, ROBOT_TRACK_WIDTH, b
+from full_robot import full_robot
 from zmqRemoteApi import RemoteAPIClient
-
+import matplotlib.style as mplstyle
+import matplotlib.pyplot as plt
 from itertools import permutations
 
 # initial setup for client-sim
@@ -29,10 +31,9 @@ starting_robot_positions = []
 for i in range(0, NUM_OF_ROBOTS):
     name = '/robot[' + str(i) + ']'
 
-    robots.append(sim.getObject(name))
+    robots.append(full_robot(sim, name))
 
-    script_handle.append(sim.getScript(1, robots[i]))
-    sim.initScript(script_handle[i])
+
 
 num_of_nets = NUM_OF_ROBOTS
 # net(sim)
@@ -45,7 +46,7 @@ u = []
 for i in range(len(robots)):
     new_position = generate_new_position.oval_opening(i, 0, 0, 2, 4, 0, pi * 1 / 8)
     robot_positions.append(new_position)
-    starting_robot_positions.append(sim.getObjectPosition(robots[i], sim.handle_world))
+    starting_robot_positions.append(robots[i].get_global_position())
     x_position.append(new_position[0])
     y_position.append(new_position[1])
     u.append(i)
@@ -70,8 +71,7 @@ print(col_ind)
 
 for i in row_ind:
     j = col_ind[i]
-    sim.callScriptFunction("update_actuation", script_handle[i], [x_position[j], y_position[j], 0],
-                           [ROBOT_C1, ROBOT_C2, ROBOT_TRACK_WIDTH, b])
+    robots[i].move_robot([x_position[j], y_position[j], 0], [ROBOT_C1, ROBOT_C2, ROBOT_TRACK_WIDTH, b])
 
 # loops through simulation in seconds
 
@@ -173,8 +173,37 @@ sim.resetDynamicObject(net_handle)
 # sim.setObjectInt32Param(net_handle_2,3004
 
 prev_time = int(round(time.time() * 1000))
-
+x = [-20, 20, -20, 20]
+y = [-20, 20, 20, -20]
+figure, ax = plt.subplots(figsize=(5.0, 5.0))
+line1, = ax.plot(x, y, 'bo')
+plt.show(block=False)
+mplstyle.use('fast')
+figure.canvas.draw()
+background = figure.canvas.copy_from_bbox(ax.bbox)
+x = []
+y = []
 while (t := sim.getSimulationTime()) < 25:
+    # x = []
+    # y = []
+    for i in range(10):
+        a_x = []
+        a_y = []
+        a_x, a_y = robots[i].get_global_coordinates()
+
+        x = numpy.concatenate([x, a_x])
+        y = numpy.concatenate([y, a_y])
+
+    line1.set_xdata(x)
+    line1.set_ydata(y)
+    figure.canvas.restore_region(background)
+    # figure.canvas.blit(ax.bbox)
+
+    ax.draw_artist(line1)
+
+    figure.canvas.update()
+
+    figure.canvas.flush_events()
     s = f'Simulation time: {t:.2f} [s]'
     current_time = int(round(time.time() * 1000))
     print('cycle time: ' + str(current_time - prev_time) + 'ms')
@@ -184,20 +213,42 @@ while (t := sim.getSimulationTime()) < 25:
 for i in row_ind:
     a_robot_position = robot_positions[col_ind[i]]
     a_robot_position[0] += 2
-    sim.callScriptFunction("update_actuation", script_handle[i], [a_robot_position[0], a_robot_position[1], 0],
+    robots[i].move_robot([a_robot_position[0], a_robot_position[1], 0],
                            [ROBOT_C1, ROBOT_C2, ROBOT_TRACK_WIDTH, b])
 
 while (t := sim.getSimulationTime()) < 50:
+
     x_average = 0
     y_average = 0
     for i in range(len(robots)):
-        positions = sim.getObjectPosition(robots[i], sim.handle_world)
+        positions = robots[i].get_global_position()
         x_average += positions[0]
         y_average += positions[1]
     x_average = x_average / len(robots)
     y_average = y_average / len(robots)
 
     sim.setObjectPosition(net_handle, sim.handle_world, [x_average, y_average, 0.05])
+
+    x = []
+    y = []
+    for i in range(10):
+        a_x = []
+        a_y = []
+        a_x, a_y = robots[i].get_global_coordinates()
+
+        x = numpy.concatenate([x, a_x])
+        y = numpy.concatenate([y, a_y])
+
+    line1.set_xdata(x)
+    line1.set_ydata(y)
+    figure.canvas.restore_region(background)
+    # figure.canvas.blit(ax.bbox)
+
+    ax.draw_artist(line1)
+
+    figure.canvas.update()
+
+    figure.canvas.flush_events()
     s = f'Simulation time: {t:.2f} [s]'
     current_time = int(round(time.time() * 1000))
     print('cycle time: ' + str(current_time - prev_time) + 'ms')
