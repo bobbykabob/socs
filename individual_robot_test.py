@@ -7,6 +7,7 @@ import numpy
 
 from constants import ROBOT_C1, ROBOT_C2, ROBOT_TRACK_WIDTH, b
 from full_robot import full_robot
+from obstacle import obstacle
 from zmqRemoteApi import RemoteAPIClient
 
 # initial setup for client-sim
@@ -15,8 +16,14 @@ sim = client.getObject('sim')
 client.setStepping(True)
 
 sim.startSimulation()
-x = [-20, 0, 0, -20]
-y = [0, 0, 20, 20]
+
+an_obstacle = obstacle(sim)
+
+current_pos = [5, -5]
+an_obstacle.set_obstacle_pos(current_pos)
+an_obstacle.set_velocity([0, .02])
+x = [-10, -10, 10, 10]
+y = [-10, 10, -10, 10]
 figure, ax = plt.subplots(figsize=(5.0, 5.0))
 line1, = ax.plot(x, y, 'bo')
 plt.show(block=False)
@@ -28,9 +35,9 @@ prev_time = int(round(time.time() * 1000))
 
 robots = []
 target_angle = radians(0)
-target_pos = [-10, 10, target_angle]
+target_pos = [10, 0, target_angle]
 constants = [ROBOT_C1, ROBOT_C2, ROBOT_TRACK_WIDTH, b]
-for i in range(2):
+for i in range(1):
 
     robots.append(full_robot(sim, '/robot[' + str(i) + ']'))
     robots[i].move_robot(target_pos, constants)
@@ -38,14 +45,14 @@ for i in range(2):
 while (t := sim.getSimulationTime()) < 40:
     x = []
     y = []
-    for i in range(2):
+    for i in range(1):
         a_x = []
         a_y = []
         a_x, a_y = robots[i].get_global_coordinates()
 
         x = numpy.concatenate([x, a_x])
         y = numpy.concatenate([y, a_y])
-
+    an_obstacle.update()
     line1.set_xdata(x)
     line1.set_ydata(y)
     figure.canvas.restore_region(background)
