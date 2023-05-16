@@ -8,6 +8,7 @@ import matplotlib
 import matplotlib.style as mplstyle
 import matplotlib.pyplot as plt
 
+matplotlib.use('TkAgg')
 left_joint = None
 right_joint = None
 robot = None
@@ -52,7 +53,7 @@ def sysCall_actuation():
     # constants order:
     # c1, c2, B, b
     global q_target, constants, orientation, positions, has_run
-    if not has_run or len(positions) == 0:
+    if not has_run or len(orientation) == 0:
         return
     c_1 = constants[0]
     c_2 = constants[1]
@@ -186,7 +187,7 @@ def init_local_graph():
     # setting title
     title = "radial view: "
     plt.title(title)
-    figure.canvas.set_window_title(title)
+    figure.canvas.manager.set_window_title(title)
 
     # setting x-axis label and y-axis label
     plt.xlabel("X-axis")
@@ -219,7 +220,7 @@ def update_local_graph():
 
     ax.draw_artist(p1)
 
-    figure.canvas.update()
+    figure.canvas.draw()
 
     figure.canvas.flush_events()
 
@@ -235,3 +236,34 @@ def show_depth_view():
     cv2.imshow('depth view', full_img)
 
 
+def get_global_coordinates():
+    global circle_x, circle_y, positions
+    global_x = [0, 0]
+    global_y = [0, 0]
+
+    # self.x = theta
+    # self.y = r
+
+    # we utilize the x = rcostheta & y = rsintheta to convert into local rectangular coordinates
+    # we then call the position of our own robot, to convert into global rectangular coordinates
+    if len(orientation) == 0:
+        return [0, 0], [0, 0]
+    current_pos = positions
+
+    robot_x = current_pos[0]
+    robot_y = current_pos[1]
+    for i in range(len(circle_x)):
+        if circle_y[i] < 1.9:
+            local_x = circle_y[i] * math.cos(circle_x[i])
+            local_y = circle_y[i] * math.sin(circle_x[i])
+            global_x.append(robot_x + local_x)
+            global_y.append(robot_y + local_y)
+
+    return global_x, global_y
+
+
+def get_position():
+    global positions
+    if positions == []:
+        positions = sim.getObjectPosition(robot, sim.handle_world)
+    return positions

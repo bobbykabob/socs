@@ -8,7 +8,7 @@ import numpy
 from constants import ROBOT_C1, ROBOT_C2, ROBOT_TRACK_WIDTH, b
 from full_robot import full_robot
 from obstacle import obstacle
-from zmqRemoteApi import RemoteAPIClient
+from coppeliasim_zmqremoteapi_client import *
 
 # initial setup for client-sim
 client = RemoteAPIClient()

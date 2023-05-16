@@ -6,7 +6,7 @@ class obstacle:
 
         self.velo = [0, 0]
         self.sim = sim
-        self.vertices, self.indices = self.sim.importMesh(0, '/Users/harris/Desktop/CoppeliaSim/obstacle1.stl', 1, 0, 0.01)
+        self.vertices, self.indices = self.sim.importMesh(0, '/Users/zhenyusong/Desktop/socs/obstacle1.stl', 1, 0, 0.01)
         print(self.vertices)
         print(len(self.vertices[0]))
         print(self.indices)
