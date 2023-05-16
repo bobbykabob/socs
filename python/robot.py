@@ -154,19 +154,22 @@ def sign(x):
 
 
 def calculate_polar_coordinates(full_img):
+
     global circle_x, circle_y
     circle_x = []
     circle_y = []
     offset = -3 * numpy.pi / 4
     data_points = 4 * 256
-
     for i in range(128):
         distance = full_img[0, i * 8]
         # currently, 0 ranges from 0 - 1, but we need to scale into meters
         distance *= 2
-        circle_x.append(offset + 2 * numpy.pi * (data_points - i * 8) / data_points)
-        circle_y.append(distance)
-
+        theta = offset + 2 * numpy.pi * (data_points - i * 8) / data_points
+        circle_x.append(theta)
+        if abs(math.sin(theta)) > abs(math.cos(theta)):
+            circle_y.append(distance / abs(math.sin(theta)))
+        else:
+            circle_y.append(distance / abs(math.cos(theta)))
     return circle_x, circle_y
 
 
@@ -181,7 +184,7 @@ def init_local_graph():
     circle_y = []
     figure, ax = plt.subplots(figsize=(2.5, 4), subplot_kw={'projection': 'polar'})
 
-    r = numpy.arange(0, 2, 0.01)
+    r = numpy.arange(0, 2 * math.sqrt(2), 0.01)
     theta = numpy.pi / 2 + r * 0
     ax.plot(theta, r, color="green")
     # setting title
