@@ -21,9 +21,12 @@ vision_sensors = []
 circle_x = []
 circle_y = []
 p1 = None
+p2 = None
 figure = None
 background = None
-ax = None
+ax = []
+velo_line = None
+current_velocity = [0, 0]
 
 
 def update_actuation(l_q_target: List[float], l_constants: List[float]):
@@ -52,7 +55,7 @@ def sysCall_actuation():
     # calculate and move robot
     # constants order:
     # c1, c2, B, b
-    global q_target, constants, orientation, positions, has_run
+    global q_target, constants, orientation, positions, has_run, current_velocity
     if not has_run or len(orientation) == 0:
         return
     c_1 = constants[0]
@@ -94,7 +97,7 @@ def sysCall_actuation():
     # rotational velocity
     # ? -> omega
     omega_r = c_2 * xi + (c_1 / ((psi_1 ** 2) + xi ** 2)) * ((2.0 / b) * psi_1 * psi_2 + xi * (d ** 2))
-
+    current_velocity = [v_r, omega_r]
     # velocity of right wheel
     # positive omega -> turn left
     # negative omega -> turn right
@@ -154,7 +157,6 @@ def sign(x):
 
 
 def calculate_polar_coordinates(full_img):
-
     global circle_x, circle_y
     circle_x = []
     circle_y = []
@@ -179,27 +181,33 @@ def get_polar_coordinates():
 
 
 def init_local_graph():
-    global circle_x, circle_y, p1, figure, background, ax
+    global circle_x, circle_y, p1, p2, figure, background, ax, velo_line
     circle_x = []
     circle_y = []
-    figure, ax = plt.subplots(figsize=(2.5, 4), subplot_kw={'projection': 'polar'})
+    figure, ax = plt.subplots(nrows=1, ncols=2)
+    ax[1] = plt.subplot(121)
+    ax[1].set(xlim=(0, 2 * math.pi), ylim=(-4, 4))
+
+    ax[0] = plt.subplot(122, projection='polar')
 
     r = numpy.arange(0, 2 * math.sqrt(2), 0.01)
     theta = numpy.pi / 2 + r * 0
-    ax.plot(theta, r, color="green")
+    ax[0].plot(theta, r, color="green")
     # setting title
-    title = "radial view: "
-    plt.title(title)
-    figure.canvas.manager.set_window_title(title)
-
+    ax[0].set_title("radial")
+    figure.canvas.manager.set_window_title("robot")
     # setting x-axis label and y-axis label
-    plt.xlabel("X-axis")
-    plt.ylabel("Y-axis")
+
     plt.show(block=False)
     mplstyle.use('fast')
-    p1, = ax.plot(circle_x, circle_y, 'bo')
+    p1, = ax[0].plot(circle_x, circle_y)
+    p2, = ax[1].plot(0, 0)
+    ax[1].set_xlabel("angle (radians)")
+    ax[1].set_ylabel("distance (meters)")
+    ax[1].set_title("difference in tangent rays")
+    velo_line, = ax[0].plot(0, 0, color='yellow')
     figure.canvas.draw()
-    background = figure.canvas.copy_from_bbox(ax.bbox)
+    background = figure.canvas.copy_from_bbox(ax[0].bbox)
 
 
 def rotate_coordinates():
@@ -209,19 +217,31 @@ def rotate_coordinates():
 
 
 def update_local_graph():
-    global circle_x, circle_y, p1, figure, background, ax
+    global circle_x, circle_y, p1, p2, figure, background, ax, current_velocity, velo_line
+    velo_r = numpy.arange(0, current_velocity[0], 0.01)
+    velo_theta = current_velocity[1] + velo_r * 0
+    velo_line.set_xdata(velo_theta)
+    velo_line.set_ydata(velo_r)
+
     rotate_coordinates()
     new_x = []
     new_y = []
+    difference_rays = []
     for i in range(int(len(circle_x))):
         new_x.append(circle_x[i])
         new_y.append(circle_y[i])
+        if i != 0:
+            difference_rays.append(new_y[i] - new_y[i - 1])
     p1.set_xdata(new_x)
     p1.set_ydata(new_y)
+
+    # tangent rays
+    p2.set_xdata(numpy.arange(0, 2 * math.pi, 2 * math.pi / int(len(difference_rays))))
+    p2.set_ydata(difference_rays)
+
     figure.canvas.restore_region(background)
     # figure.canvas.blit(ax.bbox)
-
-    ax.draw_artist(p1)
+    ax[0].draw_artist(p1)
 
     figure.canvas.draw()
 

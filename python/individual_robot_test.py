@@ -18,9 +18,11 @@ client.setStepping(True)
 sim.startSimulation()
 
 an_obstacle = obstacle(sim)
+b_obstacle = obstacle(sim)
+an_obstacle.set_obstacle_pos([5, -5])
+b_obstacle.set_obstacle_pos([0,1])
+b_obstacle.set_velocity([.01,0])
 
-current_pos = [5, -5]
-an_obstacle.set_obstacle_pos(current_pos)
 an_obstacle.set_velocity([0, .02])
 x = [-10, -10, 10, 10]
 y = [-10, 10, -10, 10]
@@ -37,7 +39,7 @@ robots = []
 target_angle = radians(0)
 target_pos = [10, 0, target_angle]
 constants = [ROBOT_C1, ROBOT_C2, ROBOT_TRACK_WIDTH, b]
-for i in range(1):
+for i in range(2):
 
     robots.append(full_robot(sim, '/robot[' + str(i) + ']'))
     robots[i].move_robot(target_pos, constants)
@@ -45,7 +47,7 @@ for i in range(1):
 while (t := sim.getSimulationTime()) < 40:
     x = []
     y = []
-    for i in range(1):
+    for i in range(2):
         a_x = []
         a_y = []
         a_x, a_y = robots[i].get_global_coordinates()
@@ -53,6 +55,7 @@ while (t := sim.getSimulationTime()) < 40:
         x = numpy.concatenate([x, a_x])
         y = numpy.concatenate([y, a_y])
     an_obstacle.update()
+    b_obstacle.update()
     line1.set_xdata(x)
     line1.set_ydata(y)
     figure.canvas.restore_region(background)
