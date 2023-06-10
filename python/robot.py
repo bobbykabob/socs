@@ -20,6 +20,7 @@ has_run = False
 vision_sensors = []
 circle_x = []
 circle_y = []
+lines = []
 p1 = None
 p2 = None
 p3 = None
@@ -184,7 +185,7 @@ def get_polar_coordinates():
 
 
 def init_local_graph():
-    global circle_x, circle_y, p1, p2, p3, figure, background, ax, velo_line
+    global circle_x, circle_y, p2, p3, figure, background, ax, lines
     circle_x = []
     circle_y = []
     figure, ax = plt.subplots(nrows=1, ncols=2)
@@ -203,15 +204,24 @@ def init_local_graph():
 
     plt.show(block=False)
     mplstyle.use('fast')
-    p1, = ax[0].plot(circle_x, circle_y, 'bo', markersize=3)
-    p2, = ax[1].plot(0, 0, 'bo', markersize=3)
-    p3, = ax[1].plot(0, 0, 'ro', markersize=3)
+    # draws the polar coordinates index 0
+    lines.append(ax[0].plot(circle_x, circle_y, 'bo', markersize=3)[0])
+
+    # draws the tangent rays index 1
+    lines.append(ax[1].plot(0, 0, 'bo', markersize=3)[0])
+
+    # draws the difference rays index 2
+    lines.append(ax[1].plot(0, 0, 'ro', markersize=3)[0])
     ax[1].set_xlabel("angle (radians)")
     ax[1].set_ylabel("distance (meters)")
     ax[1].set_title("difference in tangent rays")
-    velo_line, = ax[0].plot(0, 0, color='yellow')
+    # draws the direction of travel index 3
+    lines.append(ax[0].plot(0, 0, color='yellow')[0])
     figure.canvas.draw()
     background = figure.canvas.copy_from_bbox(ax[0].bbox)
+
+    # draws the critical point of the difference rays index 4
+    lines.append(ax[0].plot(0, 0, 'yo', markersize=3)[0])
 
 
 def rotate_coordinates():
@@ -221,11 +231,11 @@ def rotate_coordinates():
 
 
 def update_local_graph():
-    global circle_x, circle_y, p1, p2, p3, figure, background, ax, current_velocity, velo_line, difference_rays
+    global circle_x, circle_y, lines, figure, background, ax, current_velocity, difference_rays
     velo_r = numpy.arange(0, current_velocity[0], 0.01)
     velo_theta = current_velocity[1] + velo_r * 0
-    velo_line.set_xdata(velo_theta)
-    velo_line.set_ydata(velo_r)
+    lines[3].set_xdata(velo_theta)
+    lines[3].set_ydata(velo_r)
 
     rotate_coordinates()
     new_x = []
@@ -237,21 +247,24 @@ def update_local_graph():
         if i != 0:
             difference_rays.append(new_y[i] - new_y[i - 1])
     process_difference_rays()
-    p1.set_xdata(new_x)
-    p1.set_ydata(new_y)
+    lines[0].set_xdata(new_x)
+    lines[0].set_ydata(new_y)
 
     # difference in tangent rays
     p2_xdata = numpy.arange(0, 2 * math.pi, 2 * math.pi / int(len(difference_rays)))
-    p2.set_xdata(p2_xdata)
-    p2.set_ydata(difference_rays)
+    lines[1].set_xdata(p2_xdata)
+    lines[1].set_ydata(difference_rays)
 
     # tangent rays
-    p3.set_xdata(p2_xdata)
-    p3.set_ydata(new_y[0:-1])
+    lines[2].set_xdata(p2_xdata)
+    lines[2].set_ydata(new_y[0:-1])
     figure.canvas.restore_region(background)
     # figure.canvas.blit(ax.bbox)
-    ax[0].draw_artist(p1)
+    ax[0].draw_artist(lines[0])
 
+    mid_ray_position = process_difference_rays()
+    lines[4].set_xdata(mid_ray_position[0])
+    lines[4].set_ydata(mid_ray_position[1])
     figure.canvas.draw()
 
     figure.canvas.flush_events()
@@ -264,8 +277,10 @@ def process_difference_rays():
     # the +1 offset is to account for the difference rays' calculation method
     max_ray = difference_rays.index(max(difference_rays)) + 1
     min_ray = difference_rays.index(min(difference_rays)) + 1
-    mid_ray = max_ray - min_ray
-    position = [circle_x[mid_ray], circle_y[min_ray]]
+
+    mid_ray = int((max_ray - min_ray) / 2) + min_ray
+    position = [circle_x[mid_ray], circle_y[mid_ray]]
+    return position
 
 
 def show_depth_view():
