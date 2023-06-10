@@ -265,7 +265,7 @@ def process_difference_rays():
     max_ray = difference_rays.index(max(difference_rays)) + 1
     min_ray = difference_rays.index(min(difference_rays)) + 1
     mid_ray = max_ray - min_ray
-    position = [circle_x[mid_ray], circle_y[min_ray]
+    position = [circle_x[mid_ray], circle_y[min_ray]]
 
 
 def show_depth_view():
@@ -311,7 +311,7 @@ def get_position():
 
 
 def get_results():
-    # get results will return the vectors of proposed objects in motion 
+    # get results will return the vectors of proposed objects in motion
     # and positions in local coordinates
 
     return None
