@@ -22,11 +22,13 @@ circle_x = []
 circle_y = []
 p1 = None
 p2 = None
+p3 = None
 figure = None
 background = None
 ax = []
 velo_line = None
 current_velocity = [0, 0]
+difference_rays = []
 
 
 def update_actuation(l_q_target: List[float], l_constants: List[float]):
@@ -157,6 +159,7 @@ def sign(x):
 
 
 def calculate_polar_coordinates(full_img):
+    # TODO fix calculations correlating the image to the circle_x and circle_y
     global circle_x, circle_y
     circle_x = []
     circle_y = []
@@ -181,7 +184,7 @@ def get_polar_coordinates():
 
 
 def init_local_graph():
-    global circle_x, circle_y, p1, p2, figure, background, ax, velo_line
+    global circle_x, circle_y, p1, p2, p3, figure, background, ax, velo_line
     circle_x = []
     circle_y = []
     figure, ax = plt.subplots(nrows=1, ncols=2)
@@ -200,8 +203,9 @@ def init_local_graph():
 
     plt.show(block=False)
     mplstyle.use('fast')
-    p1, = ax[0].plot(circle_x, circle_y)
-    p2, = ax[1].plot(0, 0)
+    p1, = ax[0].plot(circle_x, circle_y, 'bo', markersize=3)
+    p2, = ax[1].plot(0, 0, 'bo', markersize=3)
+    p3, = ax[1].plot(0, 0, 'ro', markersize=3)
     ax[1].set_xlabel("angle (radians)")
     ax[1].set_ylabel("distance (meters)")
     ax[1].set_title("difference in tangent rays")
@@ -217,7 +221,7 @@ def rotate_coordinates():
 
 
 def update_local_graph():
-    global circle_x, circle_y, p1, p2, figure, background, ax, current_velocity, velo_line
+    global circle_x, circle_y, p1, p2, p3, figure, background, ax, current_velocity, velo_line, difference_rays
     velo_r = numpy.arange(0, current_velocity[0], 0.01)
     velo_theta = current_velocity[1] + velo_r * 0
     velo_line.set_xdata(velo_theta)
@@ -232,13 +236,18 @@ def update_local_graph():
         new_y.append(circle_y[i])
         if i != 0:
             difference_rays.append(new_y[i] - new_y[i - 1])
+    process_difference_rays()
     p1.set_xdata(new_x)
     p1.set_ydata(new_y)
 
-    # tangent rays
-    p2.set_xdata(numpy.arange(0, 2 * math.pi, 2 * math.pi / int(len(difference_rays))))
+    # difference in tangent rays
+    p2_xdata = numpy.arange(0, 2 * math.pi, 2 * math.pi / int(len(difference_rays)))
+    p2.set_xdata(p2_xdata)
     p2.set_ydata(difference_rays)
 
+    # tangent rays
+    p3.set_xdata(p2_xdata)
+    p3.set_ydata(new_y[0:-1])
     figure.canvas.restore_region(background)
     # figure.canvas.blit(ax.bbox)
     ax[0].draw_artist(p1)
@@ -248,6 +257,15 @@ def update_local_graph():
     figure.canvas.flush_events()
 
     # p1.update(circle_x, circle_y, pen=None, symbol='o')
+
+
+def process_difference_rays():
+    global difference_rays, circle_x, circle_y
+    # the +1 offset is to account for the difference rays' calculation method
+    max_ray = difference_rays.index(max(difference_rays)) + 1
+    min_ray = difference_rays.index(min(difference_rays)) + 1
+    mid_ray = max_ray - min_ray
+    position = [circle_x[mid_ray], circle_y[min_ray]
 
 
 def show_depth_view():
@@ -290,3 +308,10 @@ def get_position():
     if positions == []:
         positions = sim.getObjectPosition(robot, sim.handle_world)
     return positions
+
+
+def get_results():
+    # get results will return the vectors of proposed objects in motion 
+    # and positions in local coordinates
+
+    return None
