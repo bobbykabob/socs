@@ -223,6 +223,10 @@ def init_local_graph():
     # draws the critical point of the difference rays index 4
     lines.append(ax[0].plot(0, 0, 'yo', markersize=3)[0])
 
+    # draws the middle two sets of lines
+    # lines.append(ax[0].plot(0,0, 'go', markersize=3)[0])
+    # lines.append(ax[0].plot(0,0, 'go', markersize=3)[0])
+
 
 def rotate_coordinates():
     global orientation, circle_x, circle_y
@@ -278,8 +282,60 @@ def process_difference_rays():
     max_ray = difference_rays.index(max(difference_rays)) + 1
     min_ray = difference_rays.index(min(difference_rays)) + 1
 
+    # TODO: There *may* be an indexing issue due to the int() call function
     mid_ray = int((max_ray - min_ray) / 2) + min_ray
     position = [circle_x[mid_ray], circle_y[mid_ray]]
+    local_x = []
+    local_y = []
+    for i in range(min_ray + 2, max_ray - 2, 1):
+        local_x.append(circle_y[i] * math.cos(circle_x[i]))
+        local_y.append(circle_y[i] * math.sin(circle_x[i]))
+
+    edge_index = [[]]
+    edge_slope = []
+    prev_slope = None
+
+    for i in range(1, len(local_x), 1):
+        # slope = delta y - delta x
+        slope_y = local_y[i] - local_y[i - 1]
+        slope_x = local_x[i] - local_x[i - 1]
+        # we need to account for purely vertical lines
+        if slope_x == 0:
+            slope_y = 9999
+            slope_x = 1
+
+        slope = slope_y / slope_x
+
+        if slope > 5:
+            slope = 9999
+        if slope < 0.4:
+            slope = 0
+        # we need to account for the first index
+        if prev_slope is not None:
+            # TODO: Change value of tolerance
+            tolerance = 1
+            if prev_slope - tolerance < slope and prev_slope + tolerance > slope:
+                pass
+                # if equal, then we are still looking at the same line segment
+            else:
+                # if not equal, then we are looking at a vertex
+                edge_slope.append(slope)
+                edge_index[-1].append(i)
+                edge_index.append([])
+                edge_index[-1].append(i)
+
+        else:
+            edge_index[0].append(0)
+            edge_slope.append(slope)
+        # finish the array by appending the last value
+        if i == len(local_x) - 1:
+            edge_index[-1].append(i)
+        prev_slope = slope
+
+    index = min_ray + 2 + edge_index[int(len(edge_index) / 2)][0]
+    position = [circle_x[index], circle_y[index]]
+    print("edge index:" + str(edge_index))
+    print("edge slope:" + str(edge_slope))
     return position
 
 
