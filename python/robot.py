@@ -8,6 +8,9 @@ import matplotlib
 import matplotlib.style as mplstyle
 import matplotlib.pyplot as plt
 
+# import sys
+# import platform
+
 matplotlib.use('TkAgg')
 left_joint = None
 right_joint = None
@@ -43,8 +46,11 @@ def update_actuation(l_q_target: List[float], l_constants: List[float]):
 
 def sysCall_init():
     # initiate robot
+
     global left_joint, right_joint, robot, vision_sensors
+    # print (sys.version)
     robot = sim.getObject('.')
+
     left_joint = sim.getObject('./leftjoint')
     right_joint = sim.getObject('./rightjoint')
     vision_sensors.append(sim.getObject('./Cylinder/Vision_sensor[0]'))
@@ -135,6 +141,7 @@ def sysCall_sensing():
     full_img = circular_img
     calculate_polar_coordinates(full_img)
     update_local_graph()
+
     pass
 
 
@@ -217,8 +224,8 @@ def init_local_graph():
     ax[1].set_title("difference in tangent rays")
     # draws the direction of travel index 3
     lines.append(ax[0].plot(0, 0, color='yellow')[0])
-    figure.canvas.draw()
     background = figure.canvas.copy_from_bbox(ax[0].bbox)
+    figure.canvas.draw()
 
     # draws the critical point of the difference rays index 4
     lines.append(ax[0].plot(0, 0, 'yo', markersize=3)[0])

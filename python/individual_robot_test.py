@@ -9,7 +9,7 @@ from constants import ROBOT_C1, ROBOT_C2, ROBOT_TRACK_WIDTH, b
 from full_robot import full_robot
 from obstacle import obstacle
 from coppeliasim_zmqremoteapi_client import *
-
+from sklearn.cluster import KMeans
 # initial setup for client-sim
 client = RemoteAPIClient()
 sim = client.getObject('sim')
@@ -28,6 +28,8 @@ x = [-10, -10, 10, 10]
 y = [-10, 10, -10, 10]
 figure, ax = plt.subplots(figsize=(5.0, 5.0))
 line1, = ax.plot(x, y, 'bo')
+line2, = ax.plot(0, 0, 'yo')
+line3, = ax.plot(0, 0, 'go')
 plt.show(block=False)
 mplstyle.use('fast')
 figure.canvas.draw()
@@ -44,6 +46,7 @@ for i in range(2):
     robots.append(full_robot(sim, '/robot[' + str(i) + ']'))
     robots[i].move_robot(target_pos, constants)
 
+collated_points = None
 while (t := sim.getSimulationTime()) < 40:
     x = []
     y = []
@@ -54,6 +57,8 @@ while (t := sim.getSimulationTime()) < 40:
 
         x = numpy.concatenate([x, a_x])
         y = numpy.concatenate([y, a_y])
+
+
     an_obstacle.update()
     b_obstacle.update()
     line1.set_xdata(x)
@@ -61,8 +66,33 @@ while (t := sim.getSimulationTime()) < 40:
     figure.canvas.restore_region(background)
     # figure.canvas.blit(ax.bbox)
 
-    ax.draw_artist(line1)
+    # calculate KMeans
 
+    points = [x, y]
+    print(points)
+    points = numpy.rot90(points)
+    if not numpy.count_nonzero(points) == numpy.size(points):
+        if collated_points is None:
+            collated_points = points
+        else:
+            collated_points = numpy.concatenate([collated_points, points], axis=0)
+        print(collated_points)
+        if not len(collated_points) < 100: #arbitary threshold
+            kmeans = KMeans(n_clusters=3, random_state=42)
+            kmeans.fit(collated_points)
+            y_kmeans = kmeans.predict(collated_points)
+            print("met threshold")
+            print(kmeans.labels_)
+            print(kmeans.cluster_centers_)
+            filtered_label0 = collated_points[kmeans.labels_ == 0]
+            line2.set_xdata(kmeans.cluster_centers_[:,0])
+            line2.set_ydata(kmeans.cluster_centers_[:,1])
+            line3.set_xdata(collated_points[:, 0])
+            line3.set_ydata(collated_points[:, 1])
+    ax.draw_artist(line3)
+
+    ax.draw_artist(line1)
+    ax.draw_artist(line2)
     figure.canvas.update()
 
     figure.canvas.flush_events()
@@ -79,3 +109,7 @@ while (t := sim.getSimulationTime()) < 40:
 
 # end simulation
 sim.stopSimulation()
+
+
+
+
