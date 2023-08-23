@@ -8,6 +8,7 @@ import matplotlib
 import matplotlib.style as mplstyle
 import matplotlib.pyplot as plt
 
+matplotlib.use('TkAgg')
 left_joint = None
 right_joint = None
 robot = None
@@ -19,10 +20,16 @@ has_run = False
 vision_sensors = []
 circle_x = []
 circle_y = []
+lines = []
 p1 = None
+p2 = None
+p3 = None
 figure = None
 background = None
-ax = None
+ax = []
+velo_line = None
+current_velocity = [0, 0]
+difference_rays = []
 
 
 def update_actuation(l_q_target: List[float], l_constants: List[float]):
@@ -51,7 +58,7 @@ def sysCall_actuation():
     # calculate and move robot
     # constants order:
     # c1, c2, B, b
-    global q_target, constants, orientation, positions, has_run
+    global q_target, constants, orientation, positions, has_run, current_velocity
     if not has_run or len(orientation) == 0:
         return
     c_1 = constants[0]
@@ -93,7 +100,7 @@ def sysCall_actuation():
     # rotational velocity
     # ? -> omega
     omega_r = c_2 * xi + (c_1 / ((psi_1 ** 2) + xi ** 2)) * ((2.0 / b) * psi_1 * psi_2 + xi * (d ** 2))
-
+    current_velocity = [v_r, omega_r]
     # velocity of right wheel
     # positive omega -> turn left
     # negative omega -> turn right
@@ -153,19 +160,22 @@ def sign(x):
 
 
 def calculate_polar_coordinates(full_img):
+    # TODO fix calculations correlating the image to the circle_x and circle_y
     global circle_x, circle_y
     circle_x = []
     circle_y = []
     offset = -3 * numpy.pi / 4
     data_points = 4 * 256
-
     for i in range(128):
         distance = full_img[0, i * 8]
         # currently, 0 ranges from 0 - 1, but we need to scale into meters
         distance *= 2
-        circle_x.append(offset + 2 * numpy.pi * (data_points - i * 8) / data_points)
-        circle_y.append(distance)
-
+        theta = offset + 2 * numpy.pi * (data_points - i * 8) / data_points
+        circle_x.append(theta)
+        if abs(math.sin(theta)) > abs(math.cos(theta)):
+            circle_y.append(distance / abs(math.sin(theta)))
+        else:
+            circle_y.append(distance / abs(math.cos(theta)))
     return circle_x, circle_y
 
 
@@ -175,27 +185,43 @@ def get_polar_coordinates():
 
 
 def init_local_graph():
-    global circle_x, circle_y, p1, figure, background, ax
+    global circle_x, circle_y, p2, p3, figure, background, ax, lines
     circle_x = []
     circle_y = []
-    figure, ax = plt.subplots(figsize=(2.5, 4), subplot_kw={'projection': 'polar'})
+    figure, ax = plt.subplots(nrows=1, ncols=2)
+    ax[1] = plt.subplot(121)
+    ax[1].set(xlim=(0, 2 * math.pi), ylim=(-4, 4))
 
-    r = numpy.arange(0, 2, 0.01)
+    ax[0] = plt.subplot(122, projection='polar')
+
+    r = numpy.arange(0, 2 * math.sqrt(2), 0.01)
     theta = numpy.pi / 2 + r * 0
-    ax.plot(theta, r, color="green")
+    ax[0].plot(theta, r, color="green")
     # setting title
-    title = "radial view: "
-    plt.title(title)
-    figure.canvas.set_window_title(title)
-
+    ax[0].set_title("radial")
+    figure.canvas.manager.set_window_title("robot")
     # setting x-axis label and y-axis label
-    plt.xlabel("X-axis")
-    plt.ylabel("Y-axis")
+
     plt.show(block=False)
     mplstyle.use('fast')
-    p1, = ax.plot(circle_x, circle_y, 'bo')
+    # draws the polar coordinates index 0
+    lines.append(ax[0].plot(circle_x, circle_y, 'bo', markersize=3)[0])
+
+    # draws the tangent rays index 1
+    lines.append(ax[1].plot(0, 0, 'bo', markersize=3)[0])
+
+    # draws the difference rays index 2
+    lines.append(ax[1].plot(0, 0, 'ro', markersize=3)[0])
+    ax[1].set_xlabel("angle (radians)")
+    ax[1].set_ylabel("distance (meters)")
+    ax[1].set_title("difference in tangent rays")
+    # draws the direction of travel index 3
+    lines.append(ax[0].plot(0, 0, color='yellow')[0])
     figure.canvas.draw()
-    background = figure.canvas.copy_from_bbox(ax.bbox)
+    background = figure.canvas.copy_from_bbox(ax[0].bbox)
+
+    # draws the critical point of the difference rays index 4
+    lines.append(ax[0].plot(0, 0, 'yo', markersize=3)[0])
 
 
 def rotate_coordinates():
@@ -205,25 +231,56 @@ def rotate_coordinates():
 
 
 def update_local_graph():
-    global circle_x, circle_y, p1, figure, background, ax
+    global circle_x, circle_y, lines, figure, background, ax, current_velocity, difference_rays
+    velo_r = numpy.arange(0, current_velocity[0], 0.01)
+    velo_theta = current_velocity[1] + velo_r * 0
+    lines[3].set_xdata(velo_theta)
+    lines[3].set_ydata(velo_r)
+
     rotate_coordinates()
     new_x = []
     new_y = []
+    difference_rays = []
     for i in range(int(len(circle_x))):
         new_x.append(circle_x[i])
         new_y.append(circle_y[i])
-    p1.set_xdata(new_x)
-    p1.set_ydata(new_y)
+        if i != 0:
+            difference_rays.append(new_y[i] - new_y[i - 1])
+    process_difference_rays()
+    lines[0].set_xdata(new_x)
+    lines[0].set_ydata(new_y)
+
+    # difference in tangent rays
+    p2_xdata = numpy.arange(0, 2 * math.pi, 2 * math.pi / int(len(difference_rays)))
+    lines[1].set_xdata(p2_xdata)
+    lines[1].set_ydata(difference_rays)
+
+    # tangent rays
+    lines[2].set_xdata(p2_xdata)
+    lines[2].set_ydata(new_y[0:-1])
     figure.canvas.restore_region(background)
     # figure.canvas.blit(ax.bbox)
+    ax[0].draw_artist(lines[0])
 
-    ax.draw_artist(p1)
-
-    figure.canvas.update()
+    mid_ray_position = process_difference_rays()
+    lines[4].set_xdata(mid_ray_position[0])
+    lines[4].set_ydata(mid_ray_position[1])
+    figure.canvas.draw()
 
     figure.canvas.flush_events()
 
     # p1.update(circle_x, circle_y, pen=None, symbol='o')
+
+
+def process_difference_rays():
+    global difference_rays, circle_x, circle_y
+    # the +1 offset is to account for the difference rays' calculation method
+    max_ray = difference_rays.index(max(difference_rays)) + 1
+    min_ray = difference_rays.index(min(difference_rays)) + 1
+
+    mid_ray = int((max_ray - min_ray) / 2) + min_ray
+    position = [circle_x[mid_ray], circle_y[mid_ray]]
+    return position
 
 
 def show_depth_view():
@@ -246,7 +303,7 @@ def get_global_coordinates():
     # we utilize the x = rcostheta & y = rsintheta to convert into local rectangular coordinates
     # we then call the position of our own robot, to convert into global rectangular coordinates
     if len(orientation) == 0:
-        return [0, 0], [0, 0]
+        return [], []
     current_pos = positions
 
     robot_x = current_pos[0]
@@ -257,9 +314,6 @@ def get_global_coordinates():
             local_y = circle_y[i] * math.sin(circle_x[i])
             global_x.append(robot_x + local_x)
             global_y.append(robot_y + local_y)
-        else:
-            global_x.append(robot_x)
-            global_y.append(robot_y)
 
     return global_x, global_y
 
@@ -269,3 +323,10 @@ def get_position():
     if positions == []:
         positions = sim.getObjectPosition(robot, sim.handle_world)
     return positions
+
+
+def get_results():
+    # get results will return the vectors of proposed objects in motion 
+    # and positions in local coordinates
+
+    return None

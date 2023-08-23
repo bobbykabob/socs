@@ -10,6 +10,7 @@ from full_robot import full_robot
 from obstacle import obstacle
 from coppeliasim_zmqremoteapi_client import *
 from sklearn.cluster import KMeans
+
 # initial setup for client-sim
 client = RemoteAPIClient()
 sim = client.getObject('sim')
@@ -20,16 +21,17 @@ sim.startSimulation()
 an_obstacle = obstacle(sim)
 b_obstacle = obstacle(sim)
 an_obstacle.set_obstacle_pos([5, -5])
-b_obstacle.set_obstacle_pos([0,1])
-b_obstacle.set_velocity([.01,0])
+b_obstacle.set_obstacle_pos([0, 1])
+b_obstacle.set_velocity([.01, 0])
 
 an_obstacle.set_velocity([0, .02])
-x = [-10, -10, 10, 10]
-y = [-10, 10, -10, 10]
+x = [-15, -15, 15, 15]
+y = [-15, 15, -15, 15]
 figure, ax = plt.subplots(figsize=(5.0, 5.0))
-line1, = ax.plot(x, y, 'bo')
-line2, = ax.plot(0, 0, 'yo')
-line3, = ax.plot(0, 0, 'go')
+line1, = ax.plot(x, y, 'bo', markersize=1)
+line2, = ax.plot(0, 0, 'yo', markersize=1)
+line3, = ax.plot(0, 0, 'go', markersize=1)
+line4, = ax.plot(0, 0, 'ro', markersize=1)
 plt.show(block=False)
 mplstyle.use('fast')
 figure.canvas.draw()
@@ -38,15 +40,14 @@ background = figure.canvas.copy_from_bbox(ax.bbox)
 prev_time = int(round(time.time() * 1000))
 
 robots = []
-target_angle = radians(0)
-target_pos = [10, 0, target_angle]
+target_angle = radians(45)
+target_pos = [25, 0, target_angle]
 constants = [ROBOT_C1, ROBOT_C2, ROBOT_TRACK_WIDTH, b]
 for i in range(2):
-
     robots.append(full_robot(sim, '/robot[' + str(i) + ']'))
     robots[i].move_robot(target_pos, constants)
 
-collated_points = None
+collated_points = []
 while (t := sim.getSimulationTime()) < 40:
     x = []
     y = []
@@ -55,9 +56,9 @@ while (t := sim.getSimulationTime()) < 40:
         a_y = []
         a_x, a_y = robots[i].get_global_coordinates()
 
-        x = numpy.concatenate([x, a_x])
-        y = numpy.concatenate([y, a_y])
-
+        if not len(a_x) == 0:
+            x = numpy.concatenate([x, a_x])
+            y = numpy.concatenate([y, a_y])
 
     an_obstacle.update()
     b_obstacle.update()
@@ -71,13 +72,13 @@ while (t := sim.getSimulationTime()) < 40:
     points = [x, y]
     print(points)
     points = numpy.rot90(points)
-    if not numpy.count_nonzero(points) == numpy.size(points):
-        if collated_points is None:
+    if not len(points) == 0:
+        if len(collated_points) == 0:
             collated_points = points
         else:
             collated_points = numpy.concatenate([collated_points, points], axis=0)
         print(collated_points)
-        if not len(collated_points) < 100: #arbitary threshold
+        if not len(collated_points) < 100:  # arbitary threshold
             kmeans = KMeans(n_clusters=3, random_state=42)
             kmeans.fit(collated_points)
             y_kmeans = kmeans.predict(collated_points)
@@ -85,8 +86,8 @@ while (t := sim.getSimulationTime()) < 40:
             print(kmeans.labels_)
             print(kmeans.cluster_centers_)
             filtered_label0 = collated_points[kmeans.labels_ == 0]
-            line2.set_xdata(kmeans.cluster_centers_[:,0])
-            line2.set_ydata(kmeans.cluster_centers_[:,1])
+            line2.set_xdata(kmeans.cluster_centers_[:, 0])
+            line2.set_ydata(kmeans.cluster_centers_[:, 1])
             line3.set_xdata(collated_points[:, 0])
             line3.set_ydata(collated_points[:, 1])
     ax.draw_artist(line3)
@@ -109,7 +110,3 @@ while (t := sim.getSimulationTime()) < 40:
 
 # end simulation
 sim.stopSimulation()
-
-
-
-
