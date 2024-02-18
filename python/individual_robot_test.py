@@ -176,43 +176,54 @@ while (t := sim.getSimulationTime()) < 1000:
                 else:
                     line_segment_list = numpy.concatenate((line_segment_list, [line_segment]), axis=0)
 
+            # we are sorting the line segment list from the smallest MAD to the biggest; hence, the variable MAD_index contains the order
             line_segment_list = numpy.array(line_segment_list)
             MAD_index = numpy.argsort(line_segment_list[:,0])
-            print(MAD_index)
 
+            # we are calculating the number of clusters that are kept, at a ratio of 40% kept and 60% discarded
             num_clusters_kept = int(2 * len(MAD_index) / 5)
             MAD_index_kept = numpy.where(MAD_index < num_clusters_kept)[0]
-            print(MAD_index_kept)
-            kmeans.labels_[kmeans.labels_ >= num_clusters_kept] = -1
-            print(kmeans.labels_)
+
+            # we are now removing all the unnecessary clusters from the list of lines
+            line_segment_list = line_segment_list[MAD_index_kept]
+
+            # finds all the indices of the clustered points
+            clustered_points_index = numpy.array([])
+            for x in MAD_index_kept:
+
+                clustered_points_index = numpy.append(clustered_points_index, numpy.where(kmeans.labels_ == x))
+            clustered_points_index = clustered_points_index.astype(int)
+
+            # creates an index of all points
+            all_points_index = numpy.arange(0, len(kmeans.labels_), 1)
+
+            # deletes the indices of points to keep to get the points to delete
+            unclustered_points_index = numpy.delete(all_points_index, clustered_points_index)
 
             # just unassigned all the points that have bad clusters; time to reassign
             # 2.C
 
-            # distance = | - m * x_0 + y_0 - b |/ sqrt(m^2+1)
             all_max_dist_to_line = []
-            points_to_reassign_index = numpy.where(kmeans.labels_ == -1)
-            unclustered_points = modified_points[points_to_reassign_index]
-            for a_MAD_index in MAD_index_kept:
-                m = line_segment_list[a_MAD_index, 1]
-                b = line_segment_list[a_MAD_index, 2]
+            unclustered_points = modified_points[unclustered_points_index]
 
-                all_max_dist_to_line.append(abs(- m * unclustered_points[0] + unclustered_points[1] - b) / math.sqrt(m^2 + 1))
+
+
+            # calculate near_end, which is 2 * max j (max i d(Pi, Lj))
+
+
+            for an_unclustered_point in unclustered_points:
+                # Find lines j which d(P_i, end-points(Lj)) <= near_end OR P_i is betwenn end-points Lj)
+                for a_line_segment in line_segment_list:
+                    m = a_line_segment[1]
+                    b = a_line_segment[2]
+
+                    # distance = | - m * x_0 + y_0 - b |/ sqrt(m^2+1)
+                    distance = abs(- m * unclustered_points[:, 0] + unclustered_points[:, 1] - b) / math.sqrt(math.pow(m, 2) + 1)
+                    all_max_dist_to_line.append(distance)
+            line_m_b = line_segment_list[:, 1:2]
+
 
             max_dist_to_line = numpy.amax(all_max_dist_to_line)
-
-            mean_max_dist_to_line = max(all_max_dist_to_line)
-        #
-        # for a_point in range(len(points_to_reassign_index)):
-        #    a_point_index = points_to_reassign_index[a_point]
-        #    for a_line in range(len(MAD_index_kept)):
-        #        a_line_index = MAD_index_kept[a_line]
-
-                    # calculate distance between all points and all lines
-
-                    # calculate near_end
-
-                    # calculate near_line
 
 
             line2.set_xdata(kmeans.cluster_centers_[:, 0])
