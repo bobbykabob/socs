@@ -29,16 +29,31 @@ b_obstacle.set_velocity([.01, 0])
 an_obstacle.set_velocity([0, .02])
 x = [-15, -15, 15, 15]
 y = [-15, 15, -15, 15]
-figure, ax = plt.subplots(figsize=(3.0, 3.0))
-line1, = ax.plot(x, y, 'bo', markersize=1)
-k_means_lines = []
-line2, = ax.plot(0, 0, 'yo', markersize=1)
-line3, = ax.plot(0, 0, 'go', markersize=1)
-line4, = ax.plot(0, 0, 'ro', markersize=1)
+figure, axs = plt.subplots(figsize=(15.0, 3.0), ncols=5)
+
+# plots the outside points that define the boundaries
+[an_ax.plot(x ,y, 'wo', markersize=1) for an_ax in axs]
+
+# lines is a matrix with...
+# .. line1 line2 line3 line4 ... line_i
+# ax0  ..   ..    ..    ..    ... ..
+# ax1  ..   ..    ..    ..    ... ..
+# ax2  ..   ..    ..    ..    ... ..
+# ax3  ..   ..    ..    ..    ... ..
+# ..   ..   ..    ..    ..    ... ..
+# ..   ..   ..    ..    ..    ... ..
+# ax_j ..   ..    ..    ..    ... ..
+
+lines = numpy.array()
+
+for an_ax in axs:
+    lines.append([an_ax.plot])
 plt.show(block=False)
 mplstyle.use('fast')
 figure.canvas.draw()
-background = figure.canvas.copy_from_bbox(ax.bbox)
+backgrounds = [figure.canvas.copy_from_bbox(an_ax.bbox) for an_ax in axs]
+
+
 # empty arrays to cycle through
 prev_time = int(round(time.time() * 1000))
 
@@ -65,10 +80,9 @@ while (t := sim.getSimulationTime()) < 1000:
 
     an_obstacle.update()
     b_obstacle.update()
-    line1.set_xdata(x)
-    line1.set_ydata(y)
-    figure.canvas.restore_region(background)
-    # figure.canvas.blit(ax.bbox)
+
+    [figure.canvas.restore_region(a_background) for a_background in backgrounds]
+    # axs[0].draw_artist(axs[0].plot(x, y, 'o', color='b', markersize=1)[0])
 
     # calculate KMeans
 
@@ -84,9 +98,8 @@ while (t := sim.getSimulationTime()) < 1000:
         if len(collated_points) > 100:  # arbitary threshold
             num_clusters = int(len(collated_points) / 10)
             # num_clusters = 4
-            for line_index in range(len(k_means_lines), num_clusters):
-                rand_color = [random.uniform(0,1), random.uniform(0,1), random.uniform(0,1)]
-                k_means_lines.append(ax.plot(0,0, '-', color= rand_color, markersize=1)[0])
+
+
             modified_index = numpy.random.choice(range(len(collated_points)), size= num_clusters*10)
             modified_points = collated_points[modified_index, :]
 
@@ -163,9 +176,10 @@ while (t := sim.getSimulationTime()) < 1000:
                 line_segment_x = numpy.arange(x_tail, x_head, .00001)
                 # print(line_segment_x)
                 line_segment_y = line_segment_x * alpha[0] + alpha[1]
-                k_means_lines[line_index].set_xdata(line_segment_x)
-                k_means_lines[line_index].set_ydata(line_segment_y)
-                ax.draw_artist(k_means_lines[line_index])
+                rand_color = [random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1)]
+                # a_k_mean_line = axs[1].plot(line_segment_x, line_segment_y, '-', color=rand_color, markersize=1)[0]
+
+                # axs[1].draw_artist(a_k_mean_line)
 
                 # calculating mean absolute deviation (MAD)
                 mean_absolute_deviation = sum(abs((f_x - y))) / len(filtered_label)
@@ -176,7 +190,8 @@ while (t := sim.getSimulationTime()) < 1000:
                 else:
                     line_segment_list = numpy.concatenate((line_segment_list, [line_segment]), axis=0)
 
-            # we are sorting the line segment list from the smallest MAD to the biggest; hence, the variable MAD_index contains the order
+            # we are sorting the line segment list from the smallest MAD to the biggest; hence, the variable
+            # MAD_index contains the order
             line_segment_list = numpy.array(line_segment_list)
             MAD_index = numpy.argsort(line_segment_list[:,0])
 
@@ -200,40 +215,115 @@ while (t := sim.getSimulationTime()) < 1000:
             # deletes the indices of points to keep to get the points to delete
             unclustered_points_index = numpy.delete(all_points_index, clustered_points_index)
 
+            kmeans.labels_[unclustered_points_index] = -1
             # just unassigned all the points that have bad clusters; time to reassign
-            # 2.C
+            # ------------------2.C---------------------------------------------------
 
-            all_max_dist_to_line = []
+            point_to_line_segment = []
+
+
+            # all max dist to line is a matrix formatted as...
+            # .. P0 P1 P2 P3 ... Pi
+            # L0 [                 ]
+            # L1 [                 ]
+            # L2 [                 ]
+            # L3 [                 ]
+            # .. [                 ]
+            # .. [                 ]
+            # .. [                 ]
+            # Lj [                 ]
             unclustered_points = modified_points[unclustered_points_index]
+            # calculate d(Pi, Lj)
+            # TODO: Optimize the for loop to calculate everything in the matrix at once.. ?
 
 
+            for a_line_segment in line_segment_list:
+                m = a_line_segment[1]
+                b = a_line_segment[2]
 
-            # calculate near_end, which is 2 * max j (max i d(Pi, Lj))
+                # distance = | - m * x_0 + y_0 - b |/ sqrt(m^2+1)
+                distance = abs(- m * unclustered_points[:, 0] + unclustered_points[:, 1] - b) / math.sqrt(
+                    math.pow(m, 2) + 1)
+                point_to_line_segment.append(distance)
 
+            # near_end
+            max_point_to_line = numpy.amax(point_to_line_segment)
+            near_end = 2 * max_point_to_line
 
-            for an_unclustered_point in unclustered_points:
-                # Find lines j which d(P_i, end-points(Lj)) <= near_end OR P_i is betwenn end-points Lj)
+            # near line
+            max_individual_point_to_line = numpy.max(point_to_line_segment, axis=1)
+            near_line = numpy.sum(max_individual_point_to_line) / len(line_segment_list)
+
+            # mean dist to line
+            mean_dist_to_line = numpy.sum(point_to_line_segment) / (len(point_to_line_segment) * len(point_to_line_segment[0]))
+
+            # TODO: visualize the line segments (for my own sanity!)
+
+            # just a reminder that a line segment is written as: [MAD, m, b, tail-x, tail-y, head-x, head-y]
+            for a_line_segment in line_segment_list:
+                x = numpy.arange(a_line_segment[3], a_line_segment[5], .00001)
+                y = x * a_line_segment[1] + a_line_segment[2]
+                rand_color = [random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1)]
+                a_k_mean_line = axs[2].plot(x,y, '-', color= rand_color, markersize=1)[0]
+                axs[2].draw_artist(a_k_mean_line)
+            # Do untill point allocation is possible or max. iteration reached
+            # For each unclustered point Pi
+            for an_unclustered_point_index_index in range(0, len(unclustered_points_index)):
+
+                # I was definitely a bit mentally ill when I wrote this code
+
+                # an_unlustered_point_index_index ranges from 0 -> length of unclustered_points_index and goes up
+                # incrementally by the for loop an_unclustered_point_index is the index of unclustered points
+                # relative to the modified_points
+                # this is needed because the indices of a few calculations are a bit weird
+                an_unclustered_point_index = unclustered_points_index[an_unclustered_point_index_index]
+
+                # an_unclustered_point is the x,y coordinate of these points
+                an_unclustered_point = modified_points[an_unclustered_point_index]
+
+                # Find lines j which {d(Pi, end_points(Lj)) <= near_end OR Pi is between end_points(Lj)}
+
+                # TODO: Optimize the for loop to calculate everything in the matrix at once.. ?
+                # distance from the unclustered point to the endpoints of all lines
+                # ......... L0 L1 L2 L3 .. Lj
+                # distance [                ]
+
+                # finds d(Pi, end_points(Lj))
+                distance_unclustered_point_endpoint_lines = []
                 for a_line_segment in line_segment_list:
-                    m = a_line_segment[1]
-                    b = a_line_segment[2]
+                    a_line_segment_tail = numpy.array(a_line_segment[3:5])
+                    a_line_segment_head = numpy.array(a_line_segment[5:7])
+                    distance = math.dist(an_unclustered_point, a_line_segment_tail) + math.dist(an_unclustered_point, a_line_segment_head)
+                    distance_unclustered_point_endpoint_lines.append(distance)
 
-                    # distance = | - m * x_0 + y_0 - b |/ sqrt(m^2+1)
-                    distance = abs(- m * unclustered_points[:, 0] + unclustered_points[:, 1] - b) / math.sqrt(math.pow(m, 2) + 1)
-                    all_max_dist_to_line.append(distance)
-            line_m_b = line_segment_list[:, 1:2]
+                # finds the lines j where d(Pi, end_points(Lj)) <= near_end
+                line_segment_index = numpy.where(distance_unclustered_point_endpoint_lines < near_end)[0]
+
+                # TODO: find lines j where Pi is between end_points(Lj)
+                # find math.dist(end_points(Lj)) == math.dist(end_points(Lj, an_unclustered_point)
+
+                # we need to calculate minj{d(Pi, Lj)}
+                # these are the line segments that meet the above criterion
+
+                # along with the line segments considered, we also look at the d(Pi, Lj) through the already-calculated point-to-line segment
+                point_to_line_segments_considered = numpy.array(point_to_line_segment)[line_segment_index, an_unclustered_point_index_index]
 
 
-            max_dist_to_line = numpy.amax(all_max_dist_to_line)
+
+                # If minj{d(Pi, Lj)} <= near_line
+                if numpy.min(point_to_line_segments_considered) <= near_line:
+                    kmeans.labels_[an_unclustered_point_index] = line_segment_index[numpy.argmin(point_to_line_segments_considered)]
+
+                    # TODO: recalculate line-segment parameters and end-points
+                    # this includes
+                    # - calculating 2.A again
+                    # - potiently recalculating point_to_line_segment again
+                    # - or we can ignore recalculating point_to_line_segment again
+
+            # TODO: graph out the new kmeans clusters and information by recalculating everything!
 
 
-            line2.set_xdata(kmeans.cluster_centers_[:, 0])
-            line2.set_ydata(kmeans.cluster_centers_[:, 1])
-            # line3.set_xdata(collated_points[:, 0])
-            # line3.set_ydata(collated_points[:, 1])
-    # ax.draw_artist(line3)
 
-    # ax.draw_artist(line1)
-    # ax.draw_artist(line2)
     figure.canvas.update()
 
     figure.canvas.flush_events()
