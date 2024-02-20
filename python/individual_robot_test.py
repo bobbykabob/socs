@@ -372,94 +372,96 @@ while (t := sim.getSimulationTime()) < 1000:
                     cluster_number = MAD_index_kept[cluster_number_index]
                     kmeans.labels_[an_unclustered_point_index] = cluster_number
                     # TODO: it is being assigned incorrectly here
-                    filtered_label = modified_points[kmeans.labels_ == cluster_number]
 
-                    # TODO: recalculate line-segment parameters and end-points
-                    # this includes
-                    # - calculating 2.A again
-                    # - potientally recalculating point_to_line_segment again
-                    # - or we can ignore recalculating point_to_line_segment again
 
-                    # assemble matrix A
-                    x = filtered_label[:, 0]
-                    A = numpy.vstack([x, numpy.ones(len(x))]).T
+            # TODO: recalculate line-segment parameters and end-points
+            # this includes
+            # - calculating 2.A again
+            # - potientally recalculating point_to_line_segment again
+            # - or we can ignore recalculating point_to_line_segment again
+            for a_cluster_number_index in range(len(MAD_index_kept)):
+                a_cluster_number = MAD_index_kept[a_cluster_number_index]
+                filtered_label = modified_points[kmeans.labels_ == a_cluster_number]
+                # assemble matrix A
+                x = filtered_label[:, 0]
+                A = numpy.vstack([x, numpy.ones(len(x))]).T
 
-                    # turn y into a column vector
-                    y = filtered_label[:, 1]
-                    y_column_vec = y[:, numpy.newaxis]
+                # turn y into a column vector
+                y = filtered_label[:, 1]
+                y_column_vec = y[:, numpy.newaxis]
 
-                    # calculating line segment using least-mean-squared error
-                    alpha = numpy.linalg.lstsq(A, y_column_vec, rcond=None)[0]
+                # calculating line segment using least-mean-squared error
+                alpha = numpy.linalg.lstsq(A, y_column_vec, rcond=None)[0]
 
-                    f_x = x * alpha[0] + alpha[1]
+                f_x = x * alpha[0] + alpha[1]
 
-                    # y = mx + b
-                    # to find inverse,
-                    # x = my + b
-                    # y = (x-b) /m
-                    # f^-1(y) = (x - b) / m
-                    f_inverse_y = (y - alpha[1]) / alpha[0]
+                # y = mx + b
+                # to find inverse,
+                # x = my + b
+                # y = (x-b) /m
+                # f^-1(y) = (x - b) / m
+                f_inverse_y = (y - alpha[1]) / alpha[0]
 
-                    # implementing Most Specific Hypothesis (MSH)
+                # implementing Most Specific Hypothesis (MSH)
 
-                    x_tail = min(x)
-                    y_tail = x_tail * alpha[0] + alpha[1]
+                x_tail = min(x)
+                y_tail = x_tail * alpha[0] + alpha[1]
 
-                    x_head = max(x)
-                    y_head = x_head * alpha[0] + alpha[1]
+                x_head = max(x)
+                y_head = x_head * alpha[0] + alpha[1]
 
-                    # calculating mean absolute deviation (MAD)
-                    mean_absolute_deviation = sum(abs((f_x - y))) / len(filtered_label)
-                    line_segment = numpy.array([mean_absolute_deviation, float(alpha[0]), float(alpha[1]), float(x_tail), float(y_tail), float(x_head),
-                                    float(y_head)])
-                    line_segment_list[cluster_number_index, :] = line_segment[:]
-                    point_to_line_segment = []
-                    for a_line_segment in line_segment_list:
-                        m = a_line_segment[1]
-                        b = a_line_segment[2]
+                # calculating mean absolute deviation (MAD)
+                mean_absolute_deviation = sum(abs((f_x - y))) / len(filtered_label)
+                line_segment = numpy.array([mean_absolute_deviation, float(alpha[0]), float(alpha[1]), float(x_tail), float(y_tail), float(x_head),
+                                float(y_head)])
+                line_segment_list[a_cluster_number_index, :] = line_segment[:]
+            point_to_line_segment = []
+            for a_line_segment in line_segment_list:
+                m = a_line_segment[1]
+                b = a_line_segment[2]
 
-                        tail = numpy.array([a_line_segment[3], a_line_segment[4]])
+                tail = numpy.array([a_line_segment[3], a_line_segment[4]])
 
-                        # head equivalent to b from video
-                        head = numpy.array([a_line_segment[5], a_line_segment[6]])
+                # head equivalent to b from video
+                head = numpy.array([a_line_segment[5], a_line_segment[6]])
 
-                        distances = []
-                        for an_unclustered_point in unclustered_points:
-                            an_unclustered_point = numpy.array(an_unclustered_point)
-                            # equivalent to b-a from video
-                            tail_head = head - tail
+                distances = []
+                for an_unclustered_point in unclustered_points:
+                    an_unclustered_point = numpy.array(an_unclustered_point)
+                    # equivalent to b-a from video
+                    tail_head = head - tail
 
-                            # equivalent to p-a from video
-                            tail_point = an_unclustered_point - tail
+                    # equivalent to p-a from video
+                    tail_point = an_unclustered_point - tail
 
-                            proj = numpy.dot(tail_head, tail_point)
+                    proj = numpy.dot(tail_head, tail_point)
 
-                            line_segment_length = numpy.square(numpy.linalg.norm(tail_head))
+                    line_segment_length = numpy.square(numpy.linalg.norm(tail_head))
 
-                            d = proj / line_segment_length
-                            a_distance = 0
-                            if d <= 0:
-                                a_distance = numpy.linalg.norm(tail - an_unclustered_point)
-                            elif d >= 1:
-                                a_distance = numpy.linalg.norm(head - an_unclustered_point)
-                            else:
-                                a_distance = abs(
-                                    - m * an_unclustered_point[0] + an_unclustered_point[1] - b) / math.sqrt(
-                                    math.pow(m, 2) + 1)
-                            distances.append(a_distance)
-                        point_to_line_segment.append(distances)
+                    d = proj / line_segment_length
+                    a_distance = 0
+                    if d <= 0:
+                        a_distance = numpy.linalg.norm(tail - an_unclustered_point)
+                    elif d >= 1:
+                        a_distance = numpy.linalg.norm(head - an_unclustered_point)
+                    else:
+                        a_distance = abs(
+                            - m * an_unclustered_point[0] + an_unclustered_point[1] - b) / math.sqrt(
+                            math.pow(m, 2) + 1)
+                    distances.append(a_distance)
+                point_to_line_segment.append(distances)
 
-                    # near_end
-                    max_point_to_line = numpy.amax(point_to_line_segment)
-                    near_end = 2 * max_point_to_line
+            # near_end
+            max_point_to_line = numpy.amax(point_to_line_segment)
+            near_end = 2 * max_point_to_line
 
-                    # near line
-                    max_individual_point_to_line = numpy.max(point_to_line_segment, axis=1)
-                    near_line = numpy.sum(max_individual_point_to_line) / len(line_segment_list)
+            # near line
+            max_individual_point_to_line = numpy.max(point_to_line_segment, axis=1)
+            near_line = numpy.sum(max_individual_point_to_line) / len(line_segment_list)
 
-                    # mean dist to line
-                    mean_dist_to_line = numpy.sum(point_to_line_segment) / (
-                                len(point_to_line_segment) * len(point_to_line_segment[0]))
+            # mean dist to line
+            mean_dist_to_line = numpy.sum(point_to_line_segment) / (
+                        len(point_to_line_segment) * len(point_to_line_segment[0]))
 
 
             # TODO: graph out the new kmeans clusters and information by recalculating everything!
@@ -480,7 +482,10 @@ while (t := sim.getSimulationTime()) < 1000:
 
             #2.D Line-Segment Clustering
 
-
+            # helpful videos:
+            # https://www.youtube.com/watch?v=hbIq6vBfTEY&t=223s - explains ROC
+            # https://www.youtube.com/watch?v=Z1MSCmvzQXw&t=603s - explains ROC
+            # https://www.youtube.com/watch?v=CBTEVFphv-E - explains fuzzy logic operators
 
     for i in range(len(axs)):
         for a_line in lines[i]:
